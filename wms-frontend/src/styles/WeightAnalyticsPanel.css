@@ -1,0 +1,107 @@
+.weight-analytics-container {
+    display: flex;
+    justify-content: space-around;
+    background-color: #1b142a;
+    padding: 20px;
+    border-radius: 12px;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+  
+  .weight-card {
+    background-color: #2a1d44;
+    border-radius: 10px;
+    padding: 20px;
+    width: 220px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    color: #ffffff;
+    transition: transform 0.2s ease;
+  }
+  
+  .weight-card:hover {
+    transform: translateY(-4px);
+  }
+  
+  .weight-card .icon {
+    font-size: 26px;
+    margin-bottom: 10px;
+    color: #ffffff;
+  }
+  
+  .weight-card .label {
+    font-size: 14px;
+    color: #cccccc;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  
+  .weight-card .value {
+    font-size: 24px;
+    font-weight: bold;
+    margin: 8px 0;
+    color: #ffffff;
+  }
+  
+  .mini-bars {
+    display: flex;
+    justify-content: space-evenly;
+    align-items: flex-end;
+    height: 40px;
+    margin-top: 10px;
+  }
+  
+  .mini-bars div {
+    width: 8px;
+    background-color: #888888;
+    border-radius: 3px;
+    transition: height 0.3s ease-in-out;
+  }
+  
+  /* Color Customization Per Card */
+  .green .mini-bars div {
+    background-color: #7ed957;
+  }
+  
+  .orange .mini-bars div {
+    background-color: #f5a623;
+  }
+  
+  .purple .mini-bars div {
+    background-color: #a87ff5;
+  }
+  
+  .blue .mini-bars div {
+    background-color: #42a5f5;
+  }
+  
+  .heft-success-wrapper {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    padding: 10px 16px;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  
+  .weight-analytics-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  .d-flex.mb-3 {
+    flex-wrap: wrap;
+  }
+  
+  .ag-grid-container {
+    flex-grow: 1;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+  
+  .ag-theme-quartz {
+    height: 100%;
+    width: 100%;
+  }
+  

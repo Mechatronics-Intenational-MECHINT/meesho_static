@@ -1,0 +1,63 @@
+.drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.3);
+    display: flex;
+    justify-content: flex-end;
+    z-index: 1050;
+    animation: fadeIn 0.3s ease-in-out;
+  }
+  
+  .drawer {
+    width: 320px;
+    height: 100%;
+    background: #fff;
+    padding: 1.5rem;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.3s ease-in-out forwards;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  
+  .drawer-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .drawer-body {
+    margin-top: 1.5rem;
+  }
+  
+  .drawer-footer {
+    margin-top: 2rem;
+    display: flex;
+    justify-content: flex-end;
+  }
+  
+  .close-btn {
+    font-size: 1.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  
+  @keyframes slideIn {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0%);
+    }
+  }
+  
+  @keyframes fadeIn {
+    from {
+      background-color: rgba(0, 0, 0, 0);
+    }
+    to {
+      background-color: rgba(0, 0, 0, 0.3);
+    }
+  }
+  
