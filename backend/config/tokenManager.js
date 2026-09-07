@@ -10,7 +10,7 @@ let refreshPromise = null;
 
 const REDIS_KEY = "dws:access_token"; // separate namespace from meesho:access_token
 const BUFFER_MS = 50_000;
-const BASE_URL  = process.env.MEESHO_AUTH_URL || "https://env16115-app.dev.meeshogcp.in/api/v1/oauth/token";
+const BASE_URL  = process.env.MEESHO_AUTH_URL || "https://prod-app.valmo.in/api/v1/oauth/token";
 
 async function init() {
   await restoreFromRedis();
@@ -75,7 +75,7 @@ async function doRefresh() {
       timeout: 10_000,
     }
   );
-
+console.log("response",response.data,authorization_token)
   const { access_token, expiry_at } = response.data;
   if (!access_token) throw new Error("tokenManager: no access_token in auth response");
 

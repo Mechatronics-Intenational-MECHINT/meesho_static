@@ -30,7 +30,7 @@ const Settings        = require("../models/Settings");
 const ApiStatus       = require("../models/ApiStatus");
 const logger = require("../utils/logger");
 
-const LOGS_API_URL   = process.env.MEESHO_LOGS_URL || "https://env16115-app.dev.meeshogcp.in/api/v1/sorter/logs";
+const LOGS_API_URL   = process.env.MEESHO_LOGS_URL || "https://prod-app.valmo.in/api/v1/sorter/logs";
 const BATCH_SIZE      = 250;
 const INTERVAL_MS     = 60 * 60 * 1000; // 1 hour
 const MAX_ATTEMPTS    = 3;

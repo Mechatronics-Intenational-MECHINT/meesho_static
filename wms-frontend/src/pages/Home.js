@@ -32,6 +32,7 @@ const Home = () => {
     breadth: "",
     height: "",
     weight: "",
+    volumetricWeight: "",
     RealVolume: "",
     Volume: "",
     date: "",
@@ -81,6 +82,7 @@ const Home = () => {
           breadth:    data.breadth    ?? prev.breadth,
           height:     data.height     ?? prev.height,
           weight:     data.weight     ?? prev.weight,
+          volumetricWeight: data.volumetricWeight ?? prev.volumetricWeight,
           RealVolume: data.RealVolume ?? prev.RealVolume,
           Volume:     data.Volume     ?? prev.Volume,
           date:       data.date       ?? prev.date,
@@ -271,7 +273,7 @@ const Home = () => {
               <span className="rt-label">Weight</span>
               <div className="rt-value-row">
                 <span className="rt-value">{boxDetails.weight || "--"}</span>
-                <span className="rt-unit">Kg</span>
+                <span className="rt-unit">gm</span>
               </div>
             </div>
           </div>
@@ -288,6 +290,13 @@ const Home = () => {
               <span className="rt-label">Volume</span>
               <div className="rt-value-row">
                 <span className="rt-value">{boxDetails.Volume || "--"}</span>
+                <span className="rt-unit">mm³</span>
+              </div>
+            </div>
+            <div className="rt-tile rt-tile-secondary">
+              <span className="rt-label">Volumetric Weight</span>
+              <div className="rt-value-row">
+                <span className="rt-value">{boxDetails.volumetricWeight || "--"}</span>
                 <span className="rt-unit">mm³</span>
               </div>
             </div>
@@ -358,6 +367,7 @@ const Home = () => {
           <Column field="breadth"      header="Breadth"     style={{ textAlign: "center" }} />
           <Column field="height"       header="Height"      style={{ textAlign: "center" }} />
           <Column field="weight"       header="Weight"      style={{ textAlign: "center" }} />
+          <Column field="volumetricWeight"       header="Volumetric Weight"      style={{ textAlign: "center" }} />
           <Column field="angle"        header="Angle"       style={{ textAlign: "center" }} />
           <Column field="RealVolume"   header="Real Volume" style={{ textAlign: "center" }} />
           <Column field="Volume"       header="Volume"      style={{ textAlign: "center" }} />

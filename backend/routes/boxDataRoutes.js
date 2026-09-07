@@ -1,6 +1,8 @@
 // routes/boxDataRoutes.js
 const Boxdata = require("../models/Boxdata");
 const moment = require("moment-timezone");
+const path = require("path");
+const fs   = require("fs");
 
 async function boxDataRoutes(fastify, options) {
 
@@ -106,6 +108,64 @@ async function boxDataRoutes(fastify, options) {
       reply.code(500).send({ success: false });
     }
   });
+
+/* ═══════════════════════════════════════════════════════════════════════
+   REPLACE the earlier :id-based download route with this barcode-based one.
+   Same double "/boxdata" pattern as your other routes in this file
+   (export, clear, etc.) — so effective URL is:
+     /api/boxdata/boxdata/download-image/:barcode
+
+   Needs at top of file (if not already there):
+     const path = require("path");
+     const fs   = require("fs");
+   ═══════════════════════════════════════════════════════════════════════ */
+
+fastify.get("/boxdata/download-image/:barcode", async (request, reply) => {
+  try {
+    const { barcode } = request.params;
+    if (!barcode) {
+      return reply.code(400).send({ success: false, error: "Barcode is required." });
+    }
+
+    const uploadsDir = path.join(__dirname, "..", "uploads"); // adjust if this file isn't directly inside /routes
+
+    let files;
+    try {
+      files = fs.readdirSync(uploadsDir);
+    } catch (e) {
+      fastify.log.error("❌ Could not read uploads dir:", e.message);
+      return reply.code(500).send({ success: false, error: "Could not read uploads folder." });
+    }
+
+    // Images are stored as "<barcode>-<timestamp>.jpg" — match by prefix only.
+    // We never build a filesystem path directly from the client-supplied barcode;
+    // we only use it to filter an actual directory listing, then join the
+    // filename that we found on disk. That rules out path traversal.
+    const matches = files.filter((f) => f.startsWith(`${barcode}-`));
+
+    if (!matches.length) {
+      return reply.code(404).send({ success: false, error: "No image found for this barcode." });
+    }
+
+    // If more than one image exists for this barcode (re-scans, duplicates),
+    // pick the most recent one — same descending sort tryMatchImage() uses.
+    matches.sort((a, b) => b.localeCompare(a));
+    const filename = matches[0];
+    const filePath = path.join(uploadsDir, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return reply.code(404).send({ success: false, error: "File missing on disk." });
+    }
+
+    reply.header("Content-Disposition", `attachment; filename="${barcode}.jpg"`);
+    reply.type("image/jpeg");
+    return reply.send(fs.createReadStream(filePath));
+
+  } catch (err) {
+    fastify.log.error("❌ GET /boxdata/download-image failed", err);
+    reply.code(500).send({ success: false, error: "Failed to download image." });
+  }
+});
 
 }
 

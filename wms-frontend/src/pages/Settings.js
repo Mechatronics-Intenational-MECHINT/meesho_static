@@ -78,29 +78,28 @@ const Icon = {
 
 /* ─── Tab definitions ─── */
 const TABS = [
-  { id: 'machine',     label: 'Machine',    Icon: Icon.Machine,     fields: ['machineUsername','centerName','state','version'] },
-  { id: 'api',         label: 'API & Auth', Icon: Icon.Api,         fields: ['bucketName','accessKeyId','secretAccessKey','weightApiToken','giRetryCount','authorizationBearer'] },
+  { id: 'machine',     label: 'Machine',    Icon: Icon.Machine,     fields: ['machineUsername'] },
+  { id: 'api',         label: 'API & Auth', Icon: Icon.Api,         fields: ['authorization_token'] },
   { id: 'calibration', label: 'Calibration',Icon: Icon.Calibration, fields: ['calibrationWaybillNumber','calibrateLength','calibrateWidth','calibrateHeight','calibrateWeight','calibrateToleranceLength','calibrateToleranceWidth','calibrateToleranceHeight','calibrateToleranceWeight','countThreshold'] },
   { id: 'boxlimits',   label: 'Box Limits', Icon: Icon.Box,         fields: ['boxlengthMin','boxlengthMax','boxbreadthMin','boxbreadthMax','boxheightMin','boxheightMax','boxweightMin','boxweightMax'] },
   { id: 'regex',       label: 'Regex',      Icon: Icon.Regex,       fields: ['regexPattern'] },
 ];
 
 const LABELS = {
-  machineUsername:'Machine Username', centerName:'Center Name', state:'State', version:'Version',
-  bucketName:'Bucket Name', accessKeyId:'Access Key ID', secretAccessKey:'Secret Access Key',
-  calibrationWaybillNumber:'Calibration Waybill Number', weightApiToken:'Weight API Token',
-  giRetryCount:'GI Retry Count', authorizationBearer:'Authorization Bearer', countThreshold:'Count Threshold',
-  calibrateLength:'Calibrate Length', calibrateWidth:'Calibrate Width', calibrateHeight:'Calibrate Height',
-  calibrateWeight:'Calibrate Weight', calibrateToleranceLength:'Calibrate Tolerance Length',
-  calibrateToleranceWidth:'Calibrate Tolerance Width', calibrateToleranceHeight:'Calibrate Tolerance Height',
-  calibrateToleranceWeight:'Calibrate Tolerance Weight', boxlengthMin:'Box Length Min',
-  boxlengthMax:'Box Length Max', boxbreadthMin:'Box Breadth Min', boxbreadthMax:'Box Breadth Max',
-  boxheightMin:'Box Height Min', boxheightMax:'Box Height Max', boxweightMin:'Box Weight Min',
-  boxweightMax:'Box Weight Max', regexPattern:'Regex Pattern',
+  machineUsername:'Machine Username',
+  calibrationWaybillNumber:'Calibration Waybill Number',
+  authorization_token:'Authorization Bearer', countThreshold:'Count Threshold',
+  calibrateLength:'Calibrate Length (mm)', calibrateWidth:'Calibrate Width (mm)', calibrateHeight:'Calibrate Height (mm)',
+  calibrateWeight:'Calibrate Weight (gm)', calibrateToleranceLength:'Calibrate Tolerance Length (mm)',
+  calibrateToleranceWidth:'Calibrate Tolerance Width (mm)', calibrateToleranceHeight:'Calibrate Tolerance Height (mm)',
+  calibrateToleranceWeight:'Calibrate Tolerance Weight (gm)', boxlengthMin:'Box Length Min (mm)',
+  boxlengthMax:'Box Length Max (mm)', boxbreadthMin:'Box Breadth Min (mm)', boxbreadthMax:'Box Breadth Max (mm)',
+  boxheightMin:'Box Height Min (mm)', boxheightMax:'Box Height Max (mm)', boxweightMin:'Box Weight Min (gm)',
+  boxweightMax:'Box Weight Max (gm)', regexPattern:'Regex Pattern',
 };
 
-const SENSITIVE = new Set(['secretAccessKey','authorizationBearer']);
-const SUMMARY_FIELDS = ['machineUsername','centerName','state','version','bucketName'];
+const SENSITIVE = new Set(['authorization_token']);
+const SUMMARY_FIELDS = ['machineUsername'];
 
 const mask = (key, val) => {
   if (val == null || val === '') return null;
@@ -235,18 +234,25 @@ const SettingsPage = () => {
     }
   };
 
-  const handleDownload = () => {
-    const ts = new Date().toLocaleString();
-    const data = Object.entries(LABELS).map(([k, label]) => ({
-      Field: label,
-      Value: settings[k] ?? '',
-      ExportedAt: ts,
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Settings');
-    XLSX.writeFile(wb, `Settings_${Date.now()}.xlsx`);
-  };
+const handleDownload = async () => {
+  try {
+    const res = await axios.post(
+      'http://localhost:1880/download-report',
+      {
+        value: true
+      }
+    );
+
+    if (res.status === 200) {
+      addToast('Tare Sent Success', 'success');
+    } else {
+      addToast('Node-RED did not acknowledge the request', 'warning');
+    }
+  } catch (err) {
+    console.error('❌ Failed to send download request:', err.message);
+    addToast('Failed to send download request', 'danger');
+  }
+};
 
   const handleSendToNodeRed = async () => {
     try {
@@ -281,8 +287,8 @@ const SettingsPage = () => {
         </div>
         <div className="sp-header-actions">
           <button className="sp-btn sp-btn-ghost" onClick={handleDownload}>
-            <Icon.Download />
-            Download Report
+            {/* <Icon.Download /> */}
+            Tare Weight
           </button>
           <button className="sp-btn sp-btn-primary" onClick={handleSendToNodeRed}>
             <Icon.Send />

@@ -7,7 +7,7 @@ const { withTokenRetry } = require("../config/tokenManager");
 const Boxdata            = require("../models/Boxdata");
 const InscanAuditLog     = require("../models/InscanAuditLog");
 
-const INSCAN_API_URL      = process.env.MEESHO_INSCAN_URL || "https://env16115-app.dev.meeshogcp.in/api/v1/sorter/awb/inscan";
+const INSCAN_API_URL      = process.env.MEESHO_INSCAN_URL || "https://prod-app.valmo.in/api/v1/sorter/awb/inscan";
 const INSCAN_MAX_ATTEMPTS = 5;
 const INSCAN_RETRY_DELAY  = 3000;
 
@@ -21,15 +21,20 @@ async function callInscanApi(wbn) {
 
   for (let attempt = 1; attempt <= INSCAN_MAX_ATTEMPTS; attempt++) {
     try {
+      console.log("payload",payload,token)
       const response = await withTokenRetry(async (token) => {
         return await axios.post(INSCAN_API_URL, payload, {
           headers: {
             "Content-Type":  "application/json",
             "Authorization": `${token}`,
           },
+          
           timeout: 10_000,
         });
+        
       });
+      console.log(payload)
+          console.log(token)
 
       return {
         success:  true,

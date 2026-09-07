@@ -10,7 +10,7 @@ const BoxdataSchema = new mongoose.Schema(
     angle: { type: String },
 
     weight: { type: String },
-
+  volumetricWeight : { type: String },
     RealVolume: { type: String },
     Volume: { type: String },
 

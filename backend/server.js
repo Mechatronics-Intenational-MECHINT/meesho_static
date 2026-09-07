@@ -83,13 +83,13 @@ async function recoverPendingJobs() {
         );
       }
 
-      if (box.imageSent === "pending" && box.imageRetryCount < 5) {
-        await imageQueue.add(
-          "process-image",
-          { id: box._id },
-          { jobId: `img-${box._id}` }
-        );
-      }
+      // if (box.imageSent === "pending" && box.imageRetryCount < 5) {
+      //   await imageQueue.add(
+      //     "process-image",
+      //     { id: box._id },
+      //     { jobId: `img-${box._id}` }
+      //   );
+      // }
 
     } catch (err) {
       logger.info("❌ Recovery queue error:", err.message);
@@ -143,7 +143,7 @@ const serverAdapter = new FastifyAdapter();
 createBullBoard({
   queues: [
     new BullMQAdapter(inscanQueue),
-    new BullMQAdapter(imageQueue),
+    // new BullMQAdapter(imageQueue),
     new BullMQAdapter(calibrationQueue),
   ],
   serverAdapter,
@@ -172,6 +172,8 @@ fastify.register(require("./plugins/inscanApiWorker"));
 fastify.register(require("./plugins/imageWorker"));
 fastify.register(require("./plugins/calibrationWorker"));
 fastify.register(require("./workers/logSyncService"));
+fastify.register(require("./workers/imageFetchService")) 
+fastify.register(require("./workers/imageUploadService"))
 
 // ---------------- WEBSOCKET ----------------
 const server = fastify.server;
@@ -248,6 +250,55 @@ wss.on("connection", (ws, req) => {
         if (!barcode) return;
 
         const weight = parseFloat(boxInfo.weight || 0);
+                /* ================= VALIDATION ================= */
+        const isValidDim =
+          boxInfo.length >= settings.boxlengthMin &&
+          boxInfo.length <= settings.boxlengthMax &&
+          boxInfo.breadth >= settings.boxbreadthMin &&
+          boxInfo.breadth <= settings.boxbreadthMax &&
+          boxInfo.height >= settings.boxheightMin &&
+          boxInfo.height <= settings.boxheightMax &&
+          weight >= settings.boxweightMin &&
+          weight <= settings.boxweightMax;
+
+        /* ================= CALIBRATION CHECK (must run first — no duplicate check, no regex) ================= */
+        const isCalibration =
+          settings.calibrationWaybillNumber &&
+          barcode === settings.calibrationWaybillNumber;
+
+        if (isCalibration) {
+          logger.info("🧪 Calibration box detected:", barcode);
+
+          /* ---- Image match (bounded retry for camera lag) ---- */
+          let calImagePath = "image_missing";
+          for (let attempt = 0; attempt < 3 && calImagePath === "image_missing"; attempt++) {
+            if (attempt > 0) await new Promise((r) => setTimeout(r, 400));
+            const found = await tryMatchImage(barcode);
+            if (found) calImagePath = found;
+          }
+
+          const calibrationRecord = {
+            barcode,
+            ...boxInfo,
+            weight,
+            imagePath: calImagePath,
+            createdAt: new Date(),
+          };
+
+          try {
+            await calibrationQueue.add("calibration-processing", calibrationRecord);
+          } catch (e) {
+            console.error("❌ Calibration queue push failed:", e.message);
+          }
+
+          wss.clients.forEach((client) => {
+            if (client.readyState === 1 && client._path === "/bin-data") {
+              client.send(JSON.stringify(calibrationRecord));
+            }
+          });
+
+          return;
+        }
 
         /* ================= DUPLICATE CHECK (only against previously PASSED parcels) ================= */
         let isDuplicate = false;
@@ -270,7 +321,7 @@ wss.on("connection", (ws, req) => {
           }
         }
 
-        const scanStatus = isDuplicate ? "duplicate" : (isValid ? "pass" : "rejected");
+        const scanStatus = isDuplicate ? "duplicate" : (isValid && isValidDim ? "pass" : "rejected");
 
         /* ================= IMAGE MATCH (bounded retry for camera lag) ================= */
         let imagePath = "image_missing";
@@ -288,29 +339,6 @@ wss.on("connection", (ws, req) => {
           status: scanStatus,
           createdAt: new Date(),
         };
-
-        /* ================= CALIBRATION CHECK (before DB insert) ================= */
-        const isCalibration =
-          settings.calibrationWaybillNumber &&
-          barcode === settings.calibrationWaybillNumber;
-
-        if (isCalibration) {
-          logger.info("🧪 Calibration box detected:", barcode);
-
-          try {
-            await calibrationQueue.add("calibration-processing", boxRecord);
-          } catch (e) {
-            console.error("❌ Calibration queue push failed:", e.message);
-          }
-
-          wss.clients.forEach((client) => {
-            if (client.readyState === 1 && client._path === "/bin-data") {
-              client.send(JSON.stringify(boxRecord));
-            }
-          });
-
-          return;
-        }
 
         /* ================= STORE DB (shipments only — duplicates stored too, for audit) ================= */
         let savedBox = null;
@@ -330,11 +358,11 @@ wss.on("connection", (ws, req) => {
               { jobId: `inscan-${savedBox._id}` }
             );
 
-            await imageQueue.add(
-              "process-image",
-              { id: savedBox._id },
-              { jobId: `img-${savedBox._id}` }
-            );
+            // await imageQueue.add(
+            //   "process-image",
+            //   { id: savedBox._id },
+            //   { jobId: `img-${savedBox._id}` }
+            // );
 
             logger.info(`📦 ${barcode} queued (Inscan + Image)`);
 

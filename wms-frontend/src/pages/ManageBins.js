@@ -294,10 +294,17 @@ function ImageModal({ row, onClose }) {
   const imgSrc   = hasImage ? `http://localhost:5001${row.imagePath}` : null;
   const status   = (row.status||"").toLowerCase();
 
+  // Filenames on disk are "<barcode>-<timestamp>.jpg" — download by barcode so it
+  // works straight off the uploads folder, without depending on the DB's imagePath
+  // field (which can be stale/missing). Route lives at the same "/boxdata/..." level
+  // as your other routes (export, clear) — hence the doubled "/boxdata" segment here.
+  const downloadHref = hasImage ? `${API}/boxdata/download-image/${encodeURIComponent(row.barcode)}` : null;
+
   const details = [
     { label:"Barcode",    val: row.barcode },
     { label:"L × B × H", val: `${row.length}×${row.breadth}×${row.height}` },
     { label:"Weight",     val: row.weight  },
+    { label:"Vol. Weight",val: row.volumetricWeight },
     { label:"Volume",     val: row.Volume  },
     { label:"Date (IST)", val: row.dateIST || fmtIST(row.createdAt) },
     { label:"Inscan",     val: row.inscanSent },
@@ -328,6 +335,72 @@ function ImageModal({ row, onClose }) {
             </button>
           </div>
         </div>
+
+        {imgSrc && (
+          <div className="mb-img-toolbar">
+            <a href={imgSrc} target="_blank" rel="noreferrer" className="mb-img-action-btn mb-img-action-outline">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
+              </svg>
+              Open full size
+            </a>
+            <a href={downloadHref} className="mb-img-action-btn mb-img-action-solid">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Download
+            </a>
+          </div>
+        )}
+
+        <style>{`
+          .mb-img-toolbar {
+            display: flex;
+            gap: 10px;
+            padding: 10px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .mb-img-action-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12.5px;
+            font-weight: 600;
+            line-height: 1;
+            text-decoration: none;
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            transition: background .15s ease, border-color .15s ease, box-shadow .15s ease, transform .05s ease;
+            white-space: nowrap;
+          }
+          .mb-img-action-btn:active { transform: translateY(1px); }
+          .mb-img-action-outline {
+            background: #ffffff;
+            border-color: #d0d5dd;
+            color: #344054;
+          }
+          .mb-img-action-outline:hover {
+            background: #f2f4f7;
+            border-color: #98a2b3;
+          }
+          .mb-img-action-solid {
+            background: #2563eb;
+            border-color: #2563eb;
+            color: #ffffff;
+            box-shadow: 0 1px 2px rgba(37,99,235,0.35);
+          }
+          .mb-img-action-solid:hover {
+            background: #1d4ed8;
+            border-color: #1d4ed8;
+          }
+        `}</style>
         <div className="mb-img-modal-body">
           {imgSrc ? (
             <img src={imgSrc} alt={row.barcode} className="mb-img-modal-img"
@@ -352,16 +425,6 @@ function ImageModal({ row, onClose }) {
               </div>
             ))}
           </div>
-          {imgSrc && (
-            <a href={imgSrc} target="_blank" rel="noreferrer" className="mb-img-open-link">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
-                   stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
-                <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
-              </svg>
-              Open full size
-            </a>
-          )}
         </div>
       </div>
     </div>
@@ -395,20 +458,21 @@ function PipelineBadge({ value, retryCount, lastError }) {
 
 /* ══════════════════════════════ COLUMNS ══════════════════════════════ */
 const COLUMNS = [
-  { key:"sno",        label:"S.No",      width:"58px",  sortable:false },
-  { key:"barcode",    label:"Barcode",   width:"170px", sortable:true  },
-  { key:"length",     label:"L (cm)",    width:"72px",  sortable:true  },
-  { key:"breadth",    label:"B (cm)",    width:"72px",  sortable:true  },
-  { key:"height",     label:"H (cm)",    width:"72px",  sortable:true  },
-  { key:"weight",     label:"Wt (g)",    width:"76px",  sortable:true  },
-  { key:"Volume",     label:"Volume",    width:"82px",  sortable:true  },
-  { key:"RealVolume", label:"Real Vol",  width:"82px",  sortable:true  },
-  { key:"status",     label:"Status",    width:"100px", sortable:true  },
-  { key:"inscanSent", label:"Inscan",    width:"90px",  sortable:true  },
-  { key:"logSent",    label:"Log Sync",  width:"90px",  sortable:true  },
-  { key:"imageSent",  label:"Img Sync",  width:"90px",  sortable:true  },
-  { key:"dateIST",    label:"Date (IST)",width:"155px", sortable:true  },
-  { key:"imagePath",  label:"Image",     width:"80px",  sortable:false },
+  { key:"sno",              label:"S.No",      width:"58px",  sortable:false },
+  { key:"barcode",          label:"Barcode",   width:"170px", sortable:true  },
+  { key:"length",           label:"L (cm)",    width:"72px",  sortable:true  },
+  { key:"breadth",          label:"B (cm)",    width:"72px",  sortable:true  },
+  { key:"height",           label:"H (cm)",    width:"72px",  sortable:true  },
+  { key:"weight",           label:"Wt (g)",    width:"76px",  sortable:true  },
+  { key:"volumetricWeight", label:"Vol Wt",    width:"80px",  sortable:true  },
+  { key:"Volume",           label:"Volume",    width:"82px",  sortable:true  },
+  { key:"RealVolume",       label:"Real Vol",  width:"82px",  sortable:true  },
+  { key:"status",           label:"Status",    width:"100px", sortable:true  },
+  { key:"inscanSent",       label:"Inscan",    width:"90px",  sortable:true  },
+  { key:"logSent",          label:"Log Sync",  width:"90px",  sortable:true  },
+  { key:"imageSent",        label:"Img Sync",  width:"90px",  sortable:true  },
+  { key:"dateIST",          label:"Date (IST)",width:"155px", sortable:true  },
+  { key:"imagePath",        label:"Image",     width:"80px",  sortable:false },
 ];
 
 /* ══════════════════════════════ MAIN COMPONENT ══════════════════════════════ */
@@ -549,7 +613,7 @@ export default function ManageBins() {
       if (!json.success||!json.data?.length) { alert("No data to export."); return; }
       const rows = json.data.map(r=>({
         Barcode:r.barcode, Length:r.length, Breadth:r.breadth, Height:r.height,
-        Weight:r.weight, Volume:r.Volume, RealVolume:r.RealVolume,
+        Weight:r.weight, VolumetricWeight:r.volumetricWeight, Volume:r.Volume, RealVolume:r.RealVolume,
         Status:r.status,
         Inscan:r.inscanSent, LogSync:r.logSent, ImageSync:r.imageSent,
         "Date (IST)":fmtIST(r.createdAt), ImagePath:r.imagePath||"",
@@ -729,6 +793,7 @@ export default function ManageBins() {
                         <td>{row.breadth}</td>
                         <td>{row.height}</td>
                         <td>{row.weight}</td>
+                        <td>{row.volumetricWeight}</td>
                         <td>{row.Volume}</td>
                         <td>{row.RealVolume}</td>
                         <td><StatusBadge status={row.status}/></td>

@@ -9,6 +9,7 @@ const CalibrationBoxLogsSchema = new mongoose.Schema({
   width: String,
   height: String,
   weight: String,
+  volumetricWeight : String,
   calibrateLength: String,
   calibrateWidth: String,
   calibrateHeight: String,

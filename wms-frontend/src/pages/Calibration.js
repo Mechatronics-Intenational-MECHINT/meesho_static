@@ -396,6 +396,7 @@ const COLUMNS = [
   { key: "width",             label: "W",          width: "60px",  sortable: true  },
   { key: "height",            label: "H",          width: "60px",  sortable: true  },
   { key: "weight",            label: "Wt",         width: "60px",  sortable: true  },
+  { key: "volumetricWeight",  label: "Vol Wt",     width: "80px",  sortable: true  },
   { key: "lengthStatus",      label: "L Status",   width: "85px",  sortable: true  },
   { key: "widthStatus",       label: "W Status",   width: "85px",  sortable: true  },
   { key: "heightStatus",      label: "H Status",   width: "85px",  sortable: true  },
@@ -566,6 +567,7 @@ export default function Calibration() {
         Width:            r.width,
         Height:           r.height,
         Weight:           r.weight,
+        VolumetricWeight: r.volumetricWeight,
         CalibrateLength:  r.calibrateLength,
         CalibrateWidth:   r.calibrateWidth,
         CalibrateHeight:  r.calibrateHeight,
@@ -820,6 +822,7 @@ export default function Calibration() {
                       <td>{row.width}</td>
                       <td>{row.height}</td>
                       <td>{row.weight}</td>
+                      <td>{row.volumetricWeight ?? "—"}</td>
                       <td><StatusBadge value={row.lengthStatus} /></td>
                       <td><StatusBadge value={row.widthStatus} /></td>
                       <td><StatusBadge value={row.heightStatus} /></td>
