@@ -460,9 +460,9 @@ function PipelineBadge({ value, retryCount, lastError }) {
 const COLUMNS = [
   { key:"sno",              label:"S.No",      width:"58px",  sortable:false },
   { key:"barcode",          label:"Barcode",   width:"170px", sortable:true  },
-  { key:"length",           label:"L (cm)",    width:"72px",  sortable:true  },
-  { key:"breadth",          label:"B (cm)",    width:"72px",  sortable:true  },
-  { key:"height",           label:"H (cm)",    width:"72px",  sortable:true  },
+  { key:"length",           label:"L (mm)",    width:"72px",  sortable:true  },
+  { key:"breadth",          label:"B (mm)",    width:"72px",  sortable:true  },
+  { key:"height",           label:"H (mm)",    width:"72px",  sortable:true  },
   { key:"weight",           label:"Wt (g)",    width:"76px",  sortable:true  },
   { key:"volumetricWeight", label:"Vol Wt",    width:"80px",  sortable:true  },
   { key:"Volume",           label:"Volume",    width:"82px",  sortable:true  },

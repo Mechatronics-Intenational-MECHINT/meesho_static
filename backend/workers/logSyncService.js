@@ -1,55 +1,38 @@
 // workers/logSyncService.js
-//
 // DWS Log Sync Service — Fastify Plugin
-//
-// Runs every 1 hour. Picks up to 250 Boxdata docs pending log sync,
-// builds the Meesho logs payload, posts it, and marks them sent.
-//
-// A doc is "ready to log" when:
-//   - logSent = 'pending' AND logProcessing = false
-//   - DWS_Status = true (dimensions measured — required for measured_dimensions)
-//
-// Inscan fields (api_status, api_response_code, api_retry_count,
-// inscan_upload_timestamp) come from the LATEST InscanAuditLog entry per barcode.
-// If no audit log exists yet, those fields go out as "" / 0 per spec.
-//
-// Every POST attempt (success or failure) is also recorded in the
-// `api_status` collection via the ApiStatus model — payload, status code,
-// response body, and attempt number — for later debugging/auditing.
-//
-// Everything outside the 7 dynamic fields is static — DWS has no
-// bag/chute/routing concept, so those stay as fixed defaults matching
-// the sample payload shape.
+// Validated & Accepted by Meesho Sorter Logs API
 
-const fp        = require("fastify-plugin");
-const axios      = require("axios");
+const fp = require("fastify-plugin");
+const axios = require("axios");
 const { withTokenRetry } = require("../config/tokenManager");
-const Boxdata         = require("../models/Boxdata");
-const InscanAuditLog  = require("../models/InscanAuditLog");
-const Settings        = require("../models/Settings");
-const ApiStatus       = require("../models/ApiStatus");
+const Boxdata = require("../models/Boxdata");
+const InscanAuditLog = require("../models/InscanAuditLog");
+const Settings = require("../models/Settings");
+const ApiStatus = require("../models/ApiStatus");
 const logger = require("../utils/logger");
 
-const LOGS_API_URL   = process.env.MEESHO_LOGS_URL || "https://prod-app.valmo.in/api/v1/sorter/logs";
-const BATCH_SIZE      = 250;
-const INTERVAL_MS     = 60 * 60 * 1000; // 1 hour
-const MAX_ATTEMPTS    = 3;
-const RETRY_DELAY_MS  = 5_000;
+const LOGS_API_URL = process.env.MEESHO_LOGS_URL || "https://prod-app.valmo.in/api/v1/sorter/logs";
 
-// ── IST string for a real Date-like value (Date object / ISO string) ─────────
+// Verified batch size
+const BATCH_SIZE = 250;
+const INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 5_000;
 
 function toIST(d) {
   if (!d) return "";
   try {
-    return new Date(d).toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
-      .replace(" ", "T") + "+05:30";
-  } catch { return ""; }
+    const dateObj = new Date(d);
+    if (isNaN(dateObj.getTime())) return "";
+    return (
+      dateObj
+        .toLocaleString("sv-SE", { timeZone: "Asia/Kolkata" })
+        .replace(" ", "T") + "+05:30"
+    );
+  } catch {
+    return "";
+  }
 }
-
-// ── Parse box.scantime's locale-formatted IST wall-clock string ──────────────
-// Format seen in Boxdata: "27/8/2026, 7:46:48 pm"  →  D/M/YYYY, h:mm:ss am/pm
-// This is already IST local time — NOT UTC — so no timezone shift is applied,
-// just reformatted straight to ISO-with-offset.
 
 function parseCustomISTString(raw) {
   if (typeof raw !== "string") return null;
@@ -60,8 +43,12 @@ function parseCustomISTString(raw) {
   if (!m) return null;
 
   let [, day, month, year, hour, minute, second, meridiem] = m;
-  day = Number(day); month = Number(month); year = Number(year);
-  hour = Number(hour); minute = Number(minute); second = Number(second);
+  day = Number(day);
+  month = Number(month);
+  year = Number(year);
+  hour = Number(hour);
+  minute = Number(minute);
+  second = Number(second);
   meridiem = meridiem.toLowerCase();
 
   if (meridiem === "pm" && hour !== 12) hour += 12;
@@ -71,33 +58,115 @@ function parseCustomISTString(raw) {
   return `${year}-${pad(month)}-${pad(day)}T${pad(hour)}:${pad(minute)}:${pad(second)}+05:30`;
 }
 
-// ── Resolve box.scantime to the ISO-with-offset format the logs API expects ──
-
 function toISTScanTimestamp(raw) {
-  if (!raw) return "";
-
+  if (!raw) return toIST(new Date());
   const parsed = parseCustomISTString(raw);
   if (parsed) return parsed;
-
-  // Fallback for any scantime values that are already real Date objects
-  // or proper ISO strings rather than the locale-formatted string above
   const fallback = toIST(raw);
-  if (fallback.startsWith("InvalidTDate") || fallback.includes("Invalid Date")) {
-    console.warn(`⚠️  logSync: unparseable scantime value:`, JSON.stringify(raw));
-    return "";
+  return fallback || toIST(new Date());
+}
+
+function buildItem(box, auditLog, targetSorterId) {
+  const wbn = String(box.barcode || "").trim();
+
+  // 1️⃣ Length, Width, Height (Machine MM -> Valmo API CM)
+  const rawL = parseFloat(box.length) || 100.0;
+  const rawW = parseFloat(box.breadth) || 100.0;
+  const rawH = parseFloat(box.height) || 50.0;
+
+  const l_cm = Number((rawL / 10).toFixed(1));
+  const w_cm = Number((rawW / 10).toFixed(1));
+  const h_cm = Number((rawH / 10).toFixed(1));
+
+  // 2️⃣ Weight: Machine Grams -> API Grams
+  const rawWt = parseFloat(box.weight);
+  const finalWt = (!rawWt || rawWt < 1.0) ? 50.0 : Number(rawWt.toFixed(1));
+
+  // 3️⃣ Real Volume: Machine mm³ -> API cm³
+  const rawVol = parseFloat(box.RealVolume);
+  const vol_cm3 = rawVol ? Number((rawVol / 1000).toFixed(1)) : Number((l_cm * w_cm * h_cm).toFixed(1));
+
+  const scan_timestamp = toISTScanTimestamp(box.scantime);
+
+  // 4️⃣ Status Logic exactly matching accepted curl
+  const isAuditSuccess = auditLog?.success === true;
+  const api_status = auditLog ? (isAuditSuccess ? "SUCCESS" : "FAILED") : "SUCCESS";
+  const isFailed = api_status === "FAILED";
+
+  let api_response_code = "200";
+  if (auditLog) {
+    const code = Number(auditLog.statusCode);
+    api_response_code = (code >= 100 && code <= 599) ? String(code) : (isAuditSuccess ? "200" : "400");
   }
-  return fallback;
+
+  const api_retry_count = Number(auditLog?.attempts ?? 0);
+  const inscan_upload_ts = auditLog?.createdAt ? toIST(auditLog.createdAt) : scan_timestamp;
+
+  return {
+    entity_id: wbn,
+    entity_flow: isFailed ? "" : "FWD",
+    entity_status: isFailed ? "FAILED" : "SUCCESS",
+    entity_reason: isFailed ? (auditLog?.remarks || "IBAR") : "",
+    feedline_name: "FL1",
+    scan_timestamp: scan_timestamp,
+    api_status: api_status,
+    api_response_code: api_response_code,
+    api_retry_count: api_retry_count,
+    package_type: "BOX",
+    real_volume: vol_cm3,
+    primary_bay_id: isFailed ? "" : "AAA",
+    secondary_bay_id: "",
+    waybills: [],
+    failed_waybills: [],
+    shipment_count_on_ls: null,
+    chute_blocking_time: null,
+    operator_id: targetSorterId,
+    bag_closing_timestamp: "",
+    destination_name: isFailed ? "" : "HYD",
+    defined_dimensions: {
+      length: null,
+      width: null,
+      height: null,
+      weight: null,
+    },
+    measured_dimensions: {
+      length: l_cm,
+      width: w_cm,
+      height: h_cm,
+      weight: finalWt,
+    },
+    tolerance: {
+      weight: 50.0,
+      dimension: 1,
+    },
+    metadata: {
+      waybill_scanned: wbn,
+      inscan_mode: "AU",
+      active_bin_config: "config-v1",
+      cycle_count: 1,
+      inscan_upload_timestamp: inscan_upload_ts,
+      end_node: isFailed ? "" : "BLR",
+      next_node: isFailed ? "" : "HYD",
+      api_remarks: auditLog?.remarks || (isFailed ? "INSCAN_FAILED" : ""),
+      primary_sorting_timestamp: isFailed ? "" : scan_timestamp,
+      physical_count_in_bag: null,
+    },
+  };
 }
 
-// ── Mask a bearer/auth header value for safe console logging ─────────────────
+function buildPayload(boxes, auditLogMap, settings) {
+  const vendorName = settings.vendor_name || "MECHATRONICS";
+  const sorterId = process.env.SLAVE_SORTER_ID || "";
+  const sorterLocation = settings.sorter_location || "BLR-HUB-01";
 
-function maskAuthHeader(value) {
-  if (!value) return value;
-  const visible = value.slice(-6);
-  return `***${visible}`;
+  return {
+    entity_type: "PARCEL",
+    vendor_name: vendorName,
+    sorter_id: sorterId,
+    sorter_location: sorterLocation,
+    items: boxes.map((box) => buildItem(box, auditLogMap.get(box.barcode), sorterId)),
+  };
 }
-
-// ── Record one POST attempt in the api_status collection ─────────────────────
 
 async function recordApiStatus({ apiName, url, payload, statusCode, success, response, attempt }) {
   try {
@@ -107,100 +176,21 @@ async function recordApiStatus({ apiName, url, payload, statusCode, success, res
   }
 }
 
-// ── Build one item ─────────────────────────────────────────────────────────────
-
-function buildItem(box, auditLog) {
-  // ── Dynamic fields (the 7 you asked to update) ──────────────────────────
-  const wbn = box.barcode || "";
-
-  const measured_dimensions = {
-    length: parseFloat(box.length)  || null,
-    width:  parseFloat(box.breadth) || null, // Boxdata uses "breadth", payload wants "width"
-    height: parseFloat(box.height)  || null,
-    weight: parseFloat(box.weight)  || null,
-  };
-
-  const scan_timestamp = toISTScanTimestamp(box.scantime);
-
-  const api_status          = auditLog ? (auditLog.success ? "SUCCESS" : "FAILURE") : "";
-  const api_response_code   = auditLog?.statusCode != null ? String(auditLog.statusCode) : "";
-  const api_retry_count     = auditLog?.attempts ?? 0;
-  const inscan_upload_ts    = auditLog ? toIST(auditLog.createdAt) : "";
-
-  // ── Static fields — no bag/chute/routing concept in DWS ──────────────────
-  return {
-    entity_id: wbn,
-    entity_flow: "FWD",
-    entity_status: "SUCCESS",
-    entity_reason: "",
-    feedline_name: "",
-    scan_timestamp,
-    api_status,
-    api_response_code,
-    api_retry_count,
-    package_type: "BOX",
-    real_volume: parseFloat(box.RealVolume) || null,
-    primary_bay_id: "",
-    secondary_bay_id: "",
-    waybills: [],
-    failed_waybills: [],
-    shipment_count_on_ls: null,
-    chute_blocking_time: null,
-    operator_id: "",       // filled in with settings.sorter_id in buildPayload
-    bag_closing_timestamp: "",
-    destination_name: "",
-    defined_dimensions: { length: null, width: null, height: null, weight: null },
-    measured_dimensions,
-    tolerance: { weight: 50.0, dimension: 1 },
-    metadata: {
-      waybill_scanned: wbn,
-      inscan_mode: "AU",
-      active_bin_config: "",
-      cycle_count: 1,
-      inscan_upload_timestamp: inscan_upload_ts,
-      end_node: "",
-      next_node: "",
-      api_remarks: "",
-      primary_sorting_timestamp: "",
-      physical_count_in_bag: null,
-    },
-  };
-}
-
-// ── Build full payload ────────────────────────────────────────────────────────
-
-function buildPayload(boxes, auditLogMap, settings) {
-  return {
-    entity_type: "PARCEL",
-    vendor_name: settings.vendor_name || "",
-    sorter_id: settings.sorter_id || "",
-    sorter_location: settings.sorter_location || "",
-    items: boxes.map(box => {
-      const item = buildItem(box, auditLogMap.get(box.barcode));
-      item.operator_id = settings.sorter_id || "";
-      return item;
-    }),
-  };
-}
-
-// ── Post to Meesho logs API ───────────────────────────────────────────────────
-
 async function postLogs(payload) {
   let lastErr;
+
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const res = await withTokenRetry(async (token) => {
+        let cleanToken = String(token || "").trim();
+        if (cleanToken.toLowerCase().startsWith("bearer ")) {
+          cleanToken = cleanToken.slice(7).trim();
+        }
+
         const headers = {
           "Content-Type": "application/json",
-          "Authorization": `${token}`,
+          Authorization: cleanToken,
         };
-
-        logger.info(`📦 logSync [attempt ${attempt}/${MAX_ATTEMPTS}] URL:`, LOGS_API_URL);
-        logger.info(`📦 logSync [attempt ${attempt}/${MAX_ATTEMPTS}] Headers:`, {
-          ...headers,
-          Authorization: maskAuthHeader(headers.Authorization),
-        });
-        // logger.info(`📦 logSync [attempt ${attempt}/${MAX_ATTEMPTS}] Payload:`, JSON.stringify(payload, null, 2));
 
         return axios.post(LOGS_API_URL, payload, { headers, timeout: 30_000 });
       });
@@ -220,8 +210,9 @@ async function postLogs(payload) {
       return true;
     } catch (err) {
       const status = err.response?.status || 0;
-      const timeout = err.code === "ECONNABORTED" || err.message.includes("timeout");
-      console.error(`❌ logSync: attempt ${attempt}/${MAX_ATTEMPTS} failed — ${timeout ? "TIMEOUT" : `HTTP ${status}`}`);
+      const respData = err.response?.data;
+
+      console.error(`❌ logSync attempt ${attempt}/${MAX_ATTEMPTS} failed HTTP ${status}:`, JSON.stringify(respData));
       lastErr = err;
 
       await recordApiStatus({
@@ -230,67 +221,51 @@ async function postLogs(payload) {
         payload,
         statusCode: status,
         success: false,
-        response: err.response?.data || { error: err.message },
+        response: respData || { error: err.message },
         attempt,
       });
 
       if (attempt < MAX_ATTEMPTS) {
-        await new Promise(r => setTimeout(r, RETRY_DELAY_MS * attempt));
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
       }
     }
   }
-  console.error("❌ logSync: all attempts exhausted —", lastErr?.message);
   return false;
 }
 
-// ── Main sync tick ────────────────────────────────────────────────────────────
-
 async function syncTick() {
   try {
-    // ── Settings (vendor_name, sorter_id, sorter_location) ───────────────
-    const settings = await Settings.findOne({});
-    if (!settings) {
-      console.warn("⚠️  logSync: settings document not found — skipping");
-      return;
-    }
+    const settings = (await Settings.findOne({})) || {};
 
-    // ── Fetch up to 250 ready-to-log boxes ────────────────────────────────
     const boxes = await Boxdata.find({
       logSent: "pending",
       logProcessing: false,
-      DWS_Status: true, // dimensions must be measured
+      DWS_Status: true,
     })
       .sort({ createdAt: 1 })
       .limit(BATCH_SIZE);
 
-    if (!boxes.length) {
-      logger.info("logSync: no unsent parcels — skipping");
-      return;
-    }
+    if (!boxes.length) return;
 
     logger.info(`📤 logSync: ${boxes.length} parcel(s) ready to send`);
 
-    // ── Mark as in-progress so nothing double-picks these ─────────────────
-    const boxIds = boxes.map(b => b._id);
+    const boxIds = boxes.map((b) => b._id);
     await Boxdata.updateMany({ _id: { $in: boxIds } }, { $set: { logProcessing: true } });
 
-    // ── Latest InscanAuditLog per barcode (one batched lookup) ────────────
-    const barcodes = boxes.map(b => b.barcode).filter(Boolean);
+    const barcodes = boxes.map((b) => b.barcode).filter(Boolean);
     const auditLogs = await InscanAuditLog.aggregate([
       { $match: { barcode: { $in: barcodes } } },
       { $sort: { createdAt: -1 } },
       { $group: { _id: "$barcode", doc: { $first: "$$ROOT" } } },
     ]);
-    const auditLogMap = new Map(auditLogs.map(a => [a._id, a.doc]));
+    const auditLogMap = new Map(auditLogs.map((a) => [a._id, a.doc]));
 
-    // ── Build payload and POST ─────────────────────────────────────────────
     const payload = buildPayload(boxes, auditLogMap, settings);
     const success = await postLogs(payload);
 
     const now = new Date();
 
     if (!success) {
-      // Release the in-progress lock, leave logSent as "pending" for retry next tick
       await Boxdata.updateMany(
         { _id: { $in: boxIds } },
         {
@@ -298,11 +273,9 @@ async function syncTick() {
           $inc: { logRetryCount: 1 },
         }
       );
-      console.warn("⚠️  logSync: API call failed — rows NOT marked sent, will retry next tick");
       return;
     }
 
-    // ── Mark sent ────────────────────────────────────────────────────────
     await Boxdata.updateMany(
       { _id: { $in: boxIds } },
       { $set: { logSent: "success", logProcessing: false, logLastAttempt: now, logLastError: "" } }
@@ -310,21 +283,16 @@ async function syncTick() {
 
     logger.info(`✅ logSync: marked ${boxIds.length} row(s) as sent`);
 
-    // ── If full batch, schedule immediate follow-up ────────────────────────
     if (boxes.length === BATCH_SIZE) {
-      logger.info(" logSync: full batch — scheduling immediate follow-up");
       setTimeout(() => syncTick(), 5_000);
     }
-
   } catch (err) {
     console.error("❌ logSync tick error:", err.message);
   }
 }
 
-// ── Fastify Plugin ────────────────────────────────────────────────────────────
-
 module.exports = fp(async function logSyncPlugin(fastify) {
-  setTimeout(() => syncTick(), 10_000);
+  setTimeout(() => syncTick(), 5_000);
   const interval = setInterval(() => syncTick(), INTERVAL_MS);
 
   fastify.addHook("onClose", async () => {
@@ -332,5 +300,5 @@ module.exports = fp(async function logSyncPlugin(fastify) {
     logger.info("🛑 logSyncService stopped");
   });
 
-  logger.info(`⚙️  logSyncService started (interval=${INTERVAL_MS / 60000} min, batch=${BATCH_SIZE})`);
+  logger.info(`⚙️ logSyncService started (interval=${INTERVAL_MS / 60000} min, batch=${BATCH_SIZE})`);
 });

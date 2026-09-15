@@ -1,0 +1,2865 @@
+[
+    {
+        "id": "405a4070e73faf08",
+        "type": "tab",
+        "label": "Config from dashboard",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "7d3e51af4101709c",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 1",
+        "func": "let intVal = msg.payload; // e.g., 23\nlet binaryString = (intVal & 0xFFFF).toString(2).padStart(16, '0'); // 16-bit binary\nlet bits = binaryString.split('').map(bit => parseInt(bit)); // Convert to array of integers\n\nmsg.payload = bits; // Output: [0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1]\n\n\n\n\n\n\n\n\nglobal.set(\"bit0\",bits[7])\nglobal.set(\"bit1\", bits[6])\nglobal.set(\"bit2\", bits[5])\nglobal.set(\"bit3\", bits[4])\nglobal.set(\"bit4\", bits[3])\nglobal.set(\"bit5\", bits[2])\nglobal.set(\"bit6\",bits[1])\nglobal.set(\"bit7\",bits[0])\n\nglobal.set(\"bit8\",bits[15])\nglobal.set(\"bit9\",bits[14])\nglobal.set(\"bit10\",bits[13])\nglobal.set(\"bit11\",bits[12])\nglobal.set(\"bit12\",bits[11])\nglobal.set(\"bit13\",bits[10])\nglobal.set(\"bit14\",bits[9])\nglobal.set(\"bit15\",bits[8])\n\n\n\n\n\n\n\n\n\nreturn msg;\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 240,
+        "y": 40,
+        "wires": [
+            [
+                "332e0743e4675b5c"
+            ]
+        ]
+    },
+    {
+        "id": "332e0743e4675b5c",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 400,
+        "y": 40,
+        "wires": []
+    },
+    {
+        "id": "dc5af1ff66749ff4",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 2",
+        "func": "let intVal = msg.payload; // e.g., 23\nlet binaryString = (intVal & 0xFFFF).toString(2).padStart(16, '0'); // 16-bit binary\nlet bits = binaryString.split('').map(bit => parseInt(bit)); // Convert to array of integers\n\nmsg.payload = bits; // Output: [0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1]\n\n// global.set(\"\",bits[0])\n// global.set(\"\",bits[1])\n// global.set(\"\",bits[2])\n// global.set(\"\",bits[3])\n// global.set(\"\",bits[4])\n// global.set(\"\",bits[5])\n// global.set(\"\",bits[6])\n// global.set(\"\",bits[7])\n// global.set(\"\",bits[8])\n// global.set(\"\",bits[9])\n// global.set(\"\",bits[10])\n// global.set(\"\",bits[11])\n// global.set(\"\",bits[12])\n// global.set(\"\",bits[13])\n// global.set(\"\",bits[14])\n// global.set(\"\",bits[15])\n\n\n\nglobal.set(\"Emergency_Pressed\", bits[7])\nglobal.set(\"Start_pb_Pressed\", bits[6])\nglobal.set(\"Stop_pb_Pressed\", bits[5])\nglobal.set(\"Reset_pb_Pressed\", bits[4])\nglobal.set(\"Drive_not_Healthy\", bits[3])\nglobal.set(\"Weighing_Indicator_Disconnected\", bits[2])\nglobal.set(\"Dimensioner_Disconnected\", bits[1])\nglobal.set(\"IP_Camera_Disconnected\", bits[0])\n\nglobal.set(\"INVALID_BARCODE_SCANNED,_PLEASE_SCAN_VALID_BARCODE\",bits[15])\nglobal.set(\"PLC_SERVER_COMMUNICATION\",bits[14])\nglobal.set(\"LENGTH_OVER_DEFINED_PARAMETER\",bits[13])\nglobal.set(\"WIDTH_OVER_DEFINED_PARAMETER\",bits[12])\nglobal.set(\"HEIGHT_OVER_DEFINED_PARAMETER,_PLEASE_SCAN_VALID_BARCODE\",bits[11])\nglobal.set(\"WEIGHT_OVER_DEFINED_PARAMETER\",bits[10])\nglobal.set(\"LENGTH_UNDER_DEFINED_PARAMETER\",bits[9])\nglobal.set(\"WIDTH_UNDER_DEFINED_PARAMETER\",bits[8])\n\n\nreturn msg;\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 80,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4fd6e086b7c6146c",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 3",
+        "func": "let intVal = msg.payload; // e.g., 23\nlet binaryString = (intVal & 0xFFFF).toString(2).padStart(16, '0'); // 16-bit binary\nlet bits = binaryString.split('').map(bit => parseInt(bit)); // Convert to array of integers\n\nmsg.payload = bits; // Output: [0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1]\n\n\n\nglobal.set(\"HEIGHT_UNDER_DEFINED_PARAMETER\",bits[7])\nglobal.set(\"WEIGHT_UNDER_DEFINED_PARAMETER\",bits[6])\nglobal.set(\"PLEASE_PROCESS_CALIBRATION_BOX\",bits[5])\n\nglobal.set(\"CALIBRATION_BOX_VERIFIED_SUCCESSFULLY\",bits[4])\nglobal.set(\"CALIBRATION_BOX_VERIFICATION_FAILED\",bits[3])\nglobal.set(\"INTERNET_CONNECTION_ERROR\",bits[2])\nglobal.set(\"NEGATIVE_WEIGHT_RECEIVED\",bits[1])\nglobal.set(\"CB_Over_Length\",bits[0])\n\nglobal.set(\"CB_Under_Length\",bits[15])\nglobal.set(\"CB_Over_Width\",bits[14])\n\nglobal.set(\"CB_Under_Width\",bits[13])\nglobal.set(\"CB_Over_Height\",bits[12])\nglobal.set(\"CB_Under_Height\",bits[11])\nglobal.set(\"CB_Over_Weight\",bits[10])\nglobal.set(\"CB_Under_Weight\",bits[9])\nglobal.set(\"Servo_Not_Ready\",bits[8])\n\nreturn msg;\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4cf712fa12a631ea",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 4",
+        "func": "let intVal = msg.payload; // e.g., 23\nlet binaryString = (intVal & 0xFFFF).toString(2).padStart(16, '0'); // 16-bit binary\nlet bits = binaryString.split('').map(bit => parseInt(bit)); // Convert to array of integers\n\nmsg.payload = bits; // Output: [0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1]\n\nglobal.set(\"spare17\",bits[7])\nglobal.set(\"spare16\",bits[6])\nglobal.set(\"spare15\",bits[5])\nglobal.set(\"spare14\",bits[4])\nglobal.set(\"spare2\",bits[3])\nglobal.set(\"spare3\",bits[2])\nglobal.set(\"spare4\",bits[1])\nglobal.set(\"spare5\",bits[0])\n\nglobal.set(\"spare6\",bits[15])\nglobal.set(\"spare7\",bits[14])\nglobal.set(\"spare8\",bits[13])\nglobal.set(\"spare9\",bits[12])\nglobal.set(\"spare10\",bits[11])\nglobal.set(\"spare11\",bits[10])\nglobal.set(\"spare12\",bits[9])\nglobal.set(\"spare13\",bits[8])\n\nreturn msg;\n\n\n\n\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 400,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8eb1b0c4ba166007",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 5",
+        "func": "let intVal = msg.payload; // e.g., 23\nlet binaryString = (intVal & 0xFFFF).toString(2).padStart(16, '0'); // 16-bit binary\nlet bits = binaryString.split('').map(bit => parseInt(bit)); // Convert to array of integers\n\nmsg.payload = bits; // Output: [0,0,0,0,0,0,0,0,0,0,0,1,0,1,1,1]\n\n\n\n\n\n\n\n\nglobal.set(\"FTP_FOLDER_UNAVAILABLE\",bits[7])\nglobal.set(\"REAL_VOLUME_IS_GREATER_THAN_BOX_VOLUME\",bits[6])\nglobal.set(\"NEGATIVE_WEIGHT_RECEIVED\",bits[5])\nglobal.set(\"USER_NOT_LOGGED_IN\",bits[4])\nglobal.set(\"CV_-_2_DRIVE_FAULT\",bits[3])\nglobal.set(\"IMAGE_NOT_RECEIVED\", bits[2])\nglobal.set(\"CB_Over_Length\",bits[1])\nglobal.set(\"CB_Under_Length\",bits[0])\n\nglobal.set(\"CB_Over_Width\",bits[15])\nglobal.set(\"CB_Under_Width\",bits[14])\nglobal.set(\"CB_Over_Height\",bits[13])\nglobal.set(\"CB_Under_Height\",bits[12])\nglobal.set(\"CB_Over_Weight\",bits[11])\nglobal.set(\"CB_Under_Weight\",bits[10])\nglobal.set(\"Main_Panel_EMG_Pressed\",bits[9])\nglobal.set(\"Dead_Weight_alarm_Please_execute_tare\",bits[8])\n\n\nreturn msg;\n\n\n\n\n\n\n\n\n\n\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 480,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "8e7f9782a295793b",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "400",
+        "payloadType": "num",
+        "x": 130,
+        "y": 500,
+        "wires": [
+            [
+                "dddf7b9f25bfb9d8"
+            ]
+        ]
+    },
+    {
+        "id": "c643f42dc7e349f9",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "10",
+        "payloadType": "num",
+        "x": 130,
+        "y": 560,
+        "wires": [
+            [
+                "0c0ebbf4cf1873ad"
+            ]
+        ]
+    },
+    {
+        "id": "317d4ad156988006",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "300",
+        "payloadType": "num",
+        "x": 130,
+        "y": 620,
+        "wires": [
+            [
+                "df7e663fdfbbcf96"
+            ]
+        ]
+    },
+    {
+        "id": "cea75a76f2b746c5",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "10",
+        "payloadType": "num",
+        "x": 130,
+        "y": 680,
+        "wires": [
+            [
+                "6bff1f23f7a0e88f"
+            ]
+        ]
+    },
+    {
+        "id": "6f5064fe2c397025",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "200",
+        "payloadType": "num",
+        "x": 130,
+        "y": 740,
+        "wires": [
+            [
+                "31509275f760bad6"
+            ]
+        ]
+    },
+    {
+        "id": "be39f39f1b0e5fa5",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "10",
+        "payloadType": "num",
+        "x": 130,
+        "y": 820,
+        "wires": [
+            [
+                "42e69fa7a670c188"
+            ]
+        ]
+    },
+    {
+        "id": "181b8ba540fe143b",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "3760",
+        "payloadType": "num",
+        "x": 130,
+        "y": 900,
+        "wires": [
+            [
+                "abe33e6009f2dde1"
+            ]
+        ]
+    },
+    {
+        "id": "a4436fc1314bc1cb",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "100",
+        "payloadType": "num",
+        "x": 130,
+        "y": 960,
+        "wires": [
+            [
+                "b6f64aa842de0b03"
+            ]
+        ]
+    },
+    {
+        "id": "b5274b2209fd30dd",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "CB",
+        "payloadType": "str",
+        "x": 130,
+        "y": 1020,
+        "wires": [
+            [
+                "ffad5b6b97b35306"
+            ]
+        ]
+    },
+    {
+        "id": "b29a87e439431e70",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 2",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 340,
+        "y": 1080,
+        "wires": []
+    },
+    {
+        "id": "9c50c4ea8b98746f",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "195",
+        "payloadType": "num",
+        "x": 130,
+        "y": 1140,
+        "wires": [
+            [
+                "73d57e8c6f405533"
+            ]
+        ]
+    },
+    {
+        "id": "351218c0c2962a97",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "150",
+        "payloadType": "num",
+        "x": 350,
+        "y": 1380,
+        "wires": [
+            [
+                "6e2745ec7866bdfb"
+            ]
+        ]
+    },
+    {
+        "id": "ae44ddd4fcc67489",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "1000",
+        "payloadType": "num",
+        "x": 350,
+        "y": 1440,
+        "wires": [
+            [
+                "6b6a03e443d886ef"
+            ]
+        ]
+    },
+    {
+        "id": "fa30fb675a9f56db",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "150",
+        "payloadType": "num",
+        "x": 350,
+        "y": 1500,
+        "wires": [
+            [
+                "c21beabafae3a165"
+            ]
+        ]
+    },
+    {
+        "id": "193adfc9070ef878",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "1000",
+        "payloadType": "num",
+        "x": 350,
+        "y": 1560,
+        "wires": [
+            [
+                "a28e3fa16745ac09"
+            ]
+        ]
+    },
+    {
+        "id": "3f3e7a5dd543dcbf",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "10",
+        "payloadType": "num",
+        "x": 350,
+        "y": 1620,
+        "wires": [
+            [
+                "f90120d8e803ba2a"
+            ]
+        ]
+    },
+    {
+        "id": "318a4bc769bbab55",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "1000",
+        "payloadType": "num",
+        "x": 350,
+        "y": 1680,
+        "wires": [
+            [
+                "e03ed11157484a18"
+            ]
+        ]
+    },
+    {
+        "id": "aab274f60f9a3bc4",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "100",
+        "payloadType": "num",
+        "x": 350,
+        "y": 1740,
+        "wires": [
+            [
+                "70cfb1181b175a9d"
+            ]
+        ]
+    },
+    {
+        "id": "72ba3be231bfdf97",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "80000",
+        "payloadType": "num",
+        "x": 350,
+        "y": 1800,
+        "wires": [
+            [
+                "4c3041f5df34e332"
+            ]
+        ]
+    },
+    {
+        "id": "9fb68eabd2509c27",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 14",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"calibrateLength\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 460,
+        "wires": [
+            [
+                "dddf7b9f25bfb9d8",
+                "dc13f3ee724fc37c"
+            ]
+        ]
+    },
+    {
+        "id": "8bd71a55c5762d2d",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 15",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"calibrateToleranceLength\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 540,
+        "wires": [
+            [
+                "0c0ebbf4cf1873ad",
+                "9c9323a113163725"
+            ]
+        ]
+    },
+    {
+        "id": "2b55786ade7be9c7",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 16",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"calibrateWidth\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 600,
+        "wires": [
+            [
+                "df7e663fdfbbcf96",
+                "df1c32528068b12c"
+            ]
+        ]
+    },
+    {
+        "id": "d75c826e40ae263a",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 17",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"calibrateToleranceWidth\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 660,
+        "wires": [
+            [
+                "6bff1f23f7a0e88f",
+                "a1b5a721c28b1389"
+            ]
+        ]
+    },
+    {
+        "id": "a32f413949adc916",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 18",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"calibrateHeight\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 560,
+        "y": 720,
+        "wires": [
+            [
+                "31509275f760bad6",
+                "f3d8f138c3950bd2"
+            ]
+        ]
+    },
+    {
+        "id": "0623bf24d92ced37",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 19",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"calibrateToleranceHeight\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 540,
+        "y": 780,
+        "wires": [
+            [
+                "42e69fa7a670c188",
+                "c2bca33abf544ba5"
+            ]
+        ]
+    },
+    {
+        "id": "16b3ce8772dbec6d",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 20",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"calibrateWeight\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 860,
+        "wires": [
+            [
+                "abe33e6009f2dde1",
+                "27aa231aa2930132"
+            ]
+        ]
+    },
+    {
+        "id": "5997459c67991b67",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 21",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"calibrateToleranceWeight\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 940,
+        "wires": [
+            [
+                "b6f64aa842de0b03",
+                "ddb510e02203f084"
+            ]
+        ]
+    },
+    {
+        "id": "42ee7b7bbe434189",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 22",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"countThreshold\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 1100,
+        "wires": [
+            [
+                "73d57e8c6f405533",
+                "8622cfa208415adf"
+            ]
+        ]
+    },
+    {
+        "id": "d93fd72dca3231c7",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 23",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"boxlengthMin\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 1360,
+        "wires": [
+            [
+                "6e2745ec7866bdfb",
+                "6ebee50c9dfdae68"
+            ]
+        ]
+    },
+    {
+        "id": "77484ab45575b305",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 24",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"boxlengthMax\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 1420,
+        "wires": [
+            [
+                "6b6a03e443d886ef",
+                "e391bebf6e025e2b"
+            ]
+        ]
+    },
+    {
+        "id": "73078a8b5d691a69",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 25",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"boxbreadthMin\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 1480,
+        "wires": [
+            [
+                "c21beabafae3a165",
+                "9b84fd9eb787df73"
+            ]
+        ]
+    },
+    {
+        "id": "20bc50296a0ad6d9",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 26",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"boxbreadthMax\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 600,
+        "y": 1540,
+        "wires": [
+            [
+                "a28e3fa16745ac09",
+                "6e38480d3e419a1c"
+            ]
+        ]
+    },
+    {
+        "id": "a245ed164e7ac46c",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 27",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"boxheightMin\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 1600,
+        "wires": [
+            [
+                "f90120d8e803ba2a",
+                "bd45a1bf06afba9e"
+            ]
+        ]
+    },
+    {
+        "id": "f7491b3671805d3c",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 28",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"boxheightMax\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 1660,
+        "wires": [
+            [
+                "e03ed11157484a18",
+                "13a752c2d276bb3d"
+            ]
+        ]
+    },
+    {
+        "id": "2eb83816cbd3ca86",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 29",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"boxweightMin\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 1720,
+        "wires": [
+            [
+                "70cfb1181b175a9d",
+                "7e3d99d03a0ef3b1"
+            ]
+        ]
+    },
+    {
+        "id": "6ff00fc54fb9ca63",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 30",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"boxweightMax\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = Number(currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 590,
+        "y": 1780,
+        "wires": [
+            [
+                "4c3041f5df34e332",
+                "e5a5925d23117684"
+            ]
+        ]
+    },
+    {
+        "id": "8f74cb3441d02490",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "Log Incoming Settings",
+        "active": true,
+        "console": "false",
+        "complete": "payload",
+        "x": 430,
+        "y": 1880,
+        "wires": []
+    },
+    {
+        "id": "a5f5156bd849b0af",
+        "type": "http in",
+        "z": "405a4070e73faf08",
+        "name": "Receive Settings",
+        "url": "/settings-receive",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 1920,
+        "wires": [
+            [
+                "50a734a2fc636d84",
+                "8f74cb3441d02490"
+            ]
+        ]
+    },
+    {
+        "id": "50a734a2fc636d84",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "Set Globals",
+        "func": "let data = msg.payload;\n\n// If payload is a string, parse it\nif (typeof data === 'string') {\n    try {\n        data = JSON.parse(data);\n    } catch (err) {\n        node.error(\"Invalid JSON format\", msg);\n        return null;\n    }\n}\n\n// Set all keys as global variables\nfor (const key in data) {\n    if (Object.prototype.hasOwnProperty.call(data, key)) {\n        global.set(key, data[key]);\n    }\n}\n\nmsg.payload = \"Settings stored as global variables.\";\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 1940,
+        "wires": [
+            [
+                "3146e39de374d495"
+            ]
+        ]
+    },
+    {
+        "id": "3146e39de374d495",
+        "type": "http response",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "statusCode": "",
+        "headers": {},
+        "x": 520,
+        "y": 1940,
+        "wires": []
+    },
+    {
+        "id": "89f9183cec580377",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "CalibrateLength",
+        "func": "msg.payload = global.get(\"calibrateLength\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 350,
+        "y": 2000,
+        "wires": [
+            [
+                "ee016669ad4cc160"
+            ]
+        ]
+    },
+    {
+        "id": "ee016669ad4cc160",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 1",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 650,
+        "y": 2000,
+        "wires": []
+    },
+    {
+        "id": "852275a806862a75",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "CalibrateWidth",
+        "func": "msg.payload = global.get(\"calibrateWidth\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2040,
+        "wires": [
+            [
+                "f13af4e654c5dc63"
+            ]
+        ]
+    },
+    {
+        "id": "f13af4e654c5dc63",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 2",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 510,
+        "y": 2040,
+        "wires": []
+    },
+    {
+        "id": "8ff21f31fc577b5e",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "CalibrateHeight",
+        "func": "msg.payload = global.get(\"calibrateHeight\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2080,
+        "wires": [
+            [
+                "78e4a7acd452c047"
+            ]
+        ]
+    },
+    {
+        "id": "78e4a7acd452c047",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 3",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 650,
+        "y": 2080,
+        "wires": []
+    },
+    {
+        "id": "a9fde51e17b4b4aa",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "CalibrateWeight",
+        "func": "msg.payload = global.get(\"calibrateWeight\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2120,
+        "wires": [
+            [
+                "2695cb6514caf1a1"
+            ]
+        ]
+    },
+    {
+        "id": "2695cb6514caf1a1",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 4",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 510,
+        "y": 2120,
+        "wires": []
+    },
+    {
+        "id": "24fcc6105fc871a7",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "CalibrateToleranceLength",
+        "func": "msg.payload = global.get(\"calibrateToleranceLength\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 2160,
+        "wires": [
+            [
+                "a3cdca19fad1760e"
+            ]
+        ]
+    },
+    {
+        "id": "a3cdca19fad1760e",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 5",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 650,
+        "y": 2160,
+        "wires": []
+    },
+    {
+        "id": "0748771a74e6fbd9",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "CalibrateToleranceWidth",
+        "func": "msg.payload = global.get(\"calibrateToleranceWidth\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 2200,
+        "wires": [
+            [
+                "3a1861d7d2e75a31"
+            ]
+        ]
+    },
+    {
+        "id": "3a1861d7d2e75a31",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 6",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 570,
+        "y": 2200,
+        "wires": []
+    },
+    {
+        "id": "734a5f827a23c610",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "CalibrateToleranceHeight",
+        "func": "msg.payload = global.get(\"calibrateToleranceHeight\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 2240,
+        "wires": [
+            [
+                "58cf69b0f478532f"
+            ]
+        ]
+    },
+    {
+        "id": "58cf69b0f478532f",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 7",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 690,
+        "y": 2240,
+        "wires": []
+    },
+    {
+        "id": "33880f60ff661829",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "CalibrateToleranceWeight",
+        "func": "msg.payload = global.get(\"calibrateToleranceWeight\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 2280,
+        "wires": [
+            [
+                "b181b856a17d4826"
+            ]
+        ]
+    },
+    {
+        "id": "b181b856a17d4826",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 8",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 590,
+        "y": 2280,
+        "wires": []
+    },
+    {
+        "id": "77cb6ca1f30739ef",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "BoxLengthMin",
+        "func": "msg.payload = global.get(\"boxlengthMin\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2320,
+        "wires": [
+            [
+                "4f149d5f81df263a"
+            ]
+        ]
+    },
+    {
+        "id": "4f149d5f81df263a",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 11",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 690,
+        "y": 2320,
+        "wires": []
+    },
+    {
+        "id": "96a7037dc70a88fd",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "BoxLengthMax",
+        "func": "msg.payload = global.get(\"boxlengthMax\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2360,
+        "wires": [
+            [
+                "59fecb9b45980304"
+            ]
+        ]
+    },
+    {
+        "id": "59fecb9b45980304",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 12",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 570,
+        "y": 2360,
+        "wires": []
+    },
+    {
+        "id": "8558bcb690f64140",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "BoxBreadthMin",
+        "func": "msg.payload = global.get(\"boxbreadthMin\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2400,
+        "wires": [
+            [
+                "6101f19436507e50"
+            ]
+        ]
+    },
+    {
+        "id": "6101f19436507e50",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 14",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 710,
+        "y": 2400,
+        "wires": []
+    },
+    {
+        "id": "df1722fc5de4986e",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "BoxBreadthMax",
+        "func": "msg.payload = global.get(\"boxbreadthMax\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2440,
+        "wires": [
+            [
+                "5df402e8a66a6030"
+            ]
+        ]
+    },
+    {
+        "id": "5df402e8a66a6030",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 15",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 550,
+        "y": 2440,
+        "wires": []
+    },
+    {
+        "id": "5509674d28045575",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "BoxHeightMin",
+        "func": "msg.payload = global.get(\"boxheightMin\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2480,
+        "wires": [
+            [
+                "67b1d256226f55bc"
+            ]
+        ]
+    },
+    {
+        "id": "67b1d256226f55bc",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 16",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 690,
+        "y": 2480,
+        "wires": []
+    },
+    {
+        "id": "f6941d091abf73d9",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "BoxHeightMax",
+        "func": "msg.payload = global.get(\"boxheightMax\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2520,
+        "wires": [
+            [
+                "e919867c532323e3"
+            ]
+        ]
+    },
+    {
+        "id": "e919867c532323e3",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 17",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 550,
+        "y": 2520,
+        "wires": []
+    },
+    {
+        "id": "bc741df727f76bca",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "BoxWeightMin",
+        "func": "msg.payload = global.get(\"boxweightMin\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2560,
+        "wires": [
+            [
+                "6141dd0c145b8fdb"
+            ]
+        ]
+    },
+    {
+        "id": "6141dd0c145b8fdb",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 18",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 690,
+        "y": 2560,
+        "wires": []
+    },
+    {
+        "id": "2ee2bcd4a9cca4b3",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "BoxWeightMax",
+        "func": "msg.payload = global.get(\"boxweightMax\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2600,
+        "wires": [
+            [
+                "a17b5cab627ab83b"
+            ]
+        ]
+    },
+    {
+        "id": "a17b5cab627ab83b",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 19",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 590,
+        "y": 2600,
+        "wires": []
+    },
+    {
+        "id": "25d146c330dd8dad",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "CountThreshold",
+        "func": "msg.payload = global.get(\"countThreshold\");\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 330,
+        "y": 2640,
+        "wires": [
+            [
+                "f24c40898058c42b"
+            ]
+        ]
+    },
+    {
+        "id": "f24c40898058c42b",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 20",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 690,
+        "y": 2640,
+        "wires": []
+    },
+    {
+        "id": "cbe1e9c20c07902f",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "Every 1sec",
+        "props": [],
+        "repeat": "1",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "x": 110,
+        "y": 2180,
+        "wires": [
+            [
+                "89f9183cec580377",
+                "852275a806862a75",
+                "8ff21f31fc577b5e",
+                "a9fde51e17b4b4aa",
+                "24fcc6105fc871a7",
+                "0748771a74e6fbd9",
+                "734a5f827a23c610",
+                "33880f60ff661829",
+                "77cb6ca1f30739ef",
+                "96a7037dc70a88fd",
+                "8558bcb690f64140",
+                "df1722fc5de4986e",
+                "5509674d28045575",
+                "f6941d091abf73d9",
+                "bc741df727f76bca",
+                "2ee2bcd4a9cca4b3",
+                "25d146c330dd8dad"
+            ]
+        ]
+    },
+    {
+        "id": "7fa1626eb01ec860",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "true",
+        "payloadType": "bool",
+        "x": 370,
+        "y": 2740,
+        "wires": [
+            [
+                "4555b69af57c8b85"
+            ]
+        ]
+    },
+    {
+        "id": "c7aa2ad242d3ba1e",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "false",
+        "payloadType": "bool",
+        "x": 410,
+        "y": 2800,
+        "wires": [
+            [
+                "4555b69af57c8b85"
+            ]
+        ]
+    },
+    {
+        "id": "23af19671488b08e",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "Every 1s",
+        "props": [],
+        "repeat": "5",
+        "crontab": "",
+        "once": false,
+        "onceDelay": "1",
+        "topic": "",
+        "x": 120,
+        "y": 400,
+        "wires": [
+            [
+                "9fb68eabd2509c27",
+                "8bd71a55c5762d2d",
+                "2b55786ade7be9c7",
+                "d75c826e40ae263a",
+                "a32f413949adc916",
+                "0623bf24d92ced37",
+                "16b3ce8772dbec6d",
+                "5997459c67991b67",
+                "89f86942bc86166a",
+                "42ee7b7bbe434189"
+            ]
+        ]
+    },
+    {
+        "id": "dc13f3ee724fc37c",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 21",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 960,
+        "y": 460,
+        "wires": []
+    },
+    {
+        "id": "9c9323a113163725",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 22",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 990,
+        "y": 540,
+        "wires": []
+    },
+    {
+        "id": "df1c32528068b12c",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 24",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 970,
+        "y": 600,
+        "wires": []
+    },
+    {
+        "id": "a1b5a721c28b1389",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 25",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1000,
+        "y": 660,
+        "wires": []
+    },
+    {
+        "id": "f3d8f138c3950bd2",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 26",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 950,
+        "y": 720,
+        "wires": []
+    },
+    {
+        "id": "c2bca33abf544ba5",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 27",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 970,
+        "y": 780,
+        "wires": []
+    },
+    {
+        "id": "27aa231aa2930132",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 28",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 950,
+        "y": 860,
+        "wires": []
+    },
+    {
+        "id": "ddb510e02203f084",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 29",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1020,
+        "y": 940,
+        "wires": []
+    },
+    {
+        "id": "89f86942bc86166a",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 31",
+        "func": "// Get current and last sent value\nlet currentValue = global.get(\"calibrationWaybillNumber\");\nlet lastValue = context.get(\"lastSentValue\");\n\n// Compare\nif (currentValue !== lastValue) {\n    context.set(\"lastSentValue\", currentValue);\n    msg.payload = (currentValue);\n    return msg;  // send only if changed\n}\n\nreturn null;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 1000,
+        "wires": [
+            [
+                "501a0ccabc9c62f2",
+                "ffad5b6b97b35306"
+            ]
+        ]
+    },
+    {
+        "id": "501a0ccabc9c62f2",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 30",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 930,
+        "y": 1000,
+        "wires": []
+    },
+    {
+        "id": "8622cfa208415adf",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 31",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 950,
+        "y": 1100,
+        "wires": []
+    },
+    {
+        "id": "6ebee50c9dfdae68",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 32",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 990,
+        "y": 1360,
+        "wires": []
+    },
+    {
+        "id": "e391bebf6e025e2b",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 33",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1010,
+        "y": 1420,
+        "wires": []
+    },
+    {
+        "id": "9b84fd9eb787df73",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 34",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 990,
+        "y": 1480,
+        "wires": []
+    },
+    {
+        "id": "6e38480d3e419a1c",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 35",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1010,
+        "y": 1540,
+        "wires": []
+    },
+    {
+        "id": "bd45a1bf06afba9e",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 36",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 970,
+        "y": 1600,
+        "wires": []
+    },
+    {
+        "id": "13a752c2d276bb3d",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 37",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1000,
+        "y": 1660,
+        "wires": []
+    },
+    {
+        "id": "7e3d99d03a0ef3b1",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 38",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 1000,
+        "y": 1720,
+        "wires": []
+    },
+    {
+        "id": "e5a5925d23117684",
+        "type": "debug",
+        "z": "405a4070e73faf08",
+        "name": "debug 39",
+        "active": false,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": true,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "payload",
+        "statusType": "auto",
+        "x": 990,
+        "y": 1780,
+        "wires": []
+    },
+    {
+        "id": "2b67f950b8d9e4fd",
+        "type": "inject",
+        "z": "405a4070e73faf08",
+        "name": "Every 1s",
+        "props": [],
+        "repeat": "1",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "x": 360,
+        "y": 1300,
+        "wires": [
+            [
+                "d93fd72dca3231c7",
+                "77484ab45575b305",
+                "73078a8b5d691a69",
+                "20bc50296a0ad6d9",
+                "a245ed164e7ac46c",
+                "f7491b3671805d3c",
+                "2eb83816cbd3ca86",
+                "6ff00fc54fb9ca63"
+            ]
+        ]
+    },
+    {
+        "id": "82c3f14724461051",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 34",
+        "func": "global.set(\"cycle_status\",msg.payload)\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 550,
+        "y": 1220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "1219441c7931fdb6",
+        "type": "function",
+        "z": "405a4070e73faf08",
+        "name": "function 35",
+        "func": "global.set(\"box_success_count\",msg.payload);\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 580,
+        "y": 1260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "43b613eba84f9153",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "ALARM_INT0",
+        "diff": false,
+        "name": "",
+        "x": 250,
+        "y": 80,
+        "wires": [
+            [
+                "dc5af1ff66749ff4"
+            ]
+        ]
+    },
+    {
+        "id": "29f7854d5963abd8",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "ALARM_INT2",
+        "diff": false,
+        "name": "",
+        "x": 250,
+        "y": 140,
+        "wires": [
+            [
+                "4fd6e086b7c6146c"
+            ]
+        ]
+    },
+    {
+        "id": "a2dbe7c64ad07cd4",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "ALARM_INT4",
+        "diff": false,
+        "name": "",
+        "x": 250,
+        "y": 200,
+        "wires": [
+            [
+                "4cf712fa12a631ea"
+            ]
+        ]
+    },
+    {
+        "id": "2b4e8ff00ec138c9",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "ALARM_INT6",
+        "diff": false,
+        "name": "",
+        "x": 250,
+        "y": 260,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6f4e3af9e8f8fb78",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "CB_Barcode",
+        "diff": false,
+        "name": "",
+        "x": 130,
+        "y": 1080,
+        "wires": [
+            [
+                "b29a87e439431e70"
+            ]
+        ]
+    },
+    {
+        "id": "20c283ca24806682",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Machine_Run",
+        "diff": false,
+        "name": "",
+        "x": 130,
+        "y": 1320,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "588514d474b165f4",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Box Live Count",
+        "diff": false,
+        "name": "",
+        "x": 140,
+        "y": 1260,
+        "wires": [
+            [
+                "1219441c7931fdb6"
+            ]
+        ]
+    },
+    {
+        "id": "a7d60b44c526923b",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "CB Limit Count",
+        "diff": false,
+        "name": "",
+        "x": 140,
+        "y": 1200,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "f9492c70d8b2523a",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Min_Length_Box",
+        "diff": true,
+        "name": "",
+        "x": 140,
+        "y": 1380,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "4e0d9c216c9735b4",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Max_Length_Box",
+        "diff": true,
+        "name": "",
+        "x": 140,
+        "y": 1440,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cdacb417e407b60b",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Min_Width_Box",
+        "diff": true,
+        "name": "",
+        "x": 140,
+        "y": 1500,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "c58885691c6f2b09",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Max_Width_Box",
+        "diff": true,
+        "name": "",
+        "x": 140,
+        "y": 1560,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "5cfe9592169dee3b",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Min_Height_Box",
+        "diff": true,
+        "name": "",
+        "x": 140,
+        "y": 1620,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "953f624775718104",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Max_Height_Box",
+        "diff": true,
+        "name": "",
+        "x": 140,
+        "y": 1680,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "b4c769193acdd34c",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Min_Weight_Box",
+        "diff": true,
+        "name": "",
+        "x": 140,
+        "y": 1740,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "7535ca7325a3d1fb",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Max_Weight_Box",
+        "diff": true,
+        "name": "",
+        "x": 140,
+        "y": 1800,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "3e509e63902eaa08",
+        "type": "s7 in",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "mode": "single",
+        "variable": "Cycle_Status",
+        "diff": false,
+        "name": "",
+        "x": 370,
+        "y": 1220,
+        "wires": [
+            [
+                "82c3f14724461051"
+            ]
+        ]
+    },
+    {
+        "id": "dddf7b9f25bfb9d8",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB_LENGTH",
+        "name": "",
+        "x": 820,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "0c0ebbf4cf1873ad",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB_Tolerance_Length",
+        "name": "",
+        "x": 820,
+        "y": 560,
+        "wires": []
+    },
+    {
+        "id": "df7e663fdfbbcf96",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB_WIDTH",
+        "name": "",
+        "x": 810,
+        "y": 620,
+        "wires": []
+    },
+    {
+        "id": "6bff1f23f7a0e88f",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB_Tolerance_Width",
+        "name": "",
+        "x": 820,
+        "y": 680,
+        "wires": []
+    },
+    {
+        "id": "31509275f760bad6",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB_HEIGHT",
+        "name": "",
+        "x": 790,
+        "y": 740,
+        "wires": []
+    },
+    {
+        "id": "42e69fa7a670c188",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB_Tolerance_Height",
+        "name": "",
+        "x": 800,
+        "y": 820,
+        "wires": []
+    },
+    {
+        "id": "abe33e6009f2dde1",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB_WEIGHT",
+        "name": "",
+        "x": 790,
+        "y": 900,
+        "wires": []
+    },
+    {
+        "id": "b6f64aa842de0b03",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB_Tolerance_Weight",
+        "name": "",
+        "x": 800,
+        "y": 960,
+        "wires": []
+    },
+    {
+        "id": "ffad5b6b97b35306",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB_Barcode",
+        "name": "",
+        "x": 770,
+        "y": 1020,
+        "wires": []
+    },
+    {
+        "id": "73d57e8c6f405533",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "CB Limit Count",
+        "name": "",
+        "x": 800,
+        "y": 1140,
+        "wires": []
+    },
+    {
+        "id": "6e2745ec7866bdfb",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "Min_Length_Box",
+        "name": "",
+        "x": 810,
+        "y": 1380,
+        "wires": []
+    },
+    {
+        "id": "6b6a03e443d886ef",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "Max_Length_Box",
+        "name": "",
+        "x": 810,
+        "y": 1440,
+        "wires": []
+    },
+    {
+        "id": "c21beabafae3a165",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "Min_Width_Box",
+        "name": "",
+        "x": 800,
+        "y": 1500,
+        "wires": []
+    },
+    {
+        "id": "a28e3fa16745ac09",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "Max_Width_Box",
+        "name": "",
+        "x": 800,
+        "y": 1560,
+        "wires": []
+    },
+    {
+        "id": "f90120d8e803ba2a",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "Min_Height_Box",
+        "name": "",
+        "x": 800,
+        "y": 1620,
+        "wires": []
+    },
+    {
+        "id": "e03ed11157484a18",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "Max_Height_Box",
+        "name": "",
+        "x": 810,
+        "y": 1680,
+        "wires": []
+    },
+    {
+        "id": "70cfb1181b175a9d",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "Min_Weight_Box",
+        "name": "",
+        "x": 810,
+        "y": 1740,
+        "wires": []
+    },
+    {
+        "id": "4c3041f5df34e332",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "Max_Weight_Box",
+        "name": "",
+        "x": 810,
+        "y": 1800,
+        "wires": []
+    },
+    {
+        "id": "4555b69af57c8b85",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "Machine_Run",
+        "name": "",
+        "x": 780,
+        "y": 2720,
+        "wires": []
+    },
+    {
+        "id": "c21ae7c53193f2ca",
+        "type": "s7 out",
+        "z": "405a4070e73faf08",
+        "endpoint": "34c4a46da0fe6e2c",
+        "variable": "PLC SERVER COMMUNICATION ALARM",
+        "name": "",
+        "x": 910,
+        "y": 100,
+        "wires": []
+    },
+    {
+        "id": "34c4a46da0fe6e2c",
+        "type": "s7 endpoint",
+        "transport": "iso-on-tcp",
+        "address": "192.168.80.31",
+        "port": "102",
+        "rack": "0",
+        "slot": "1",
+        "localtsaphi": "01",
+        "localtsaplo": "00",
+        "remotetsaphi": "01",
+        "remotetsaplo": "00",
+        "connmode": "rack-slot",
+        "adapter": "",
+        "busaddr": "2",
+        "cycletime": "400",
+        "timeout": "4000",
+        "name": "",
+        "vartable": [
+            {
+                "addr": "MD42",
+                "name": "Length"
+            },
+            {
+                "addr": "MD46",
+                "name": "Breadth"
+            },
+            {
+                "addr": "MD50",
+                "name": "Height"
+            },
+            {
+                "addr": "MD54",
+                "name": "Angle"
+            },
+            {
+                "addr": "ID72",
+                "name": "Real length"
+            },
+            {
+                "addr": "DB38,S132.210",
+                "name": "weight"
+            },
+            {
+                "addr": "ID68",
+                "name": "TrigID"
+            },
+            {
+                "addr": "M41.5",
+                "name": "Capture"
+            },
+            {
+                "addr": "DB2,S6012.50",
+                "name": "RealVolume"
+            },
+            {
+                "addr": "DB2,S5756.50",
+                "name": "Volume"
+            },
+            {
+                "addr": "DB2,X6268.0",
+                "name": "InscanStatus"
+            },
+            {
+                "addr": "DB2,X6268.1",
+                "name": "DWS_Status"
+            },
+            {
+                "addr": "DB2,S6682.210",
+                "name": "Barcode dws"
+            },
+            {
+                "addr": "DB38,INT130",
+                "name": "AalrmCode"
+            },
+            {
+                "addr": "DB17,INT0",
+                "name": "ALARM_INT0"
+            },
+            {
+                "addr": "DB17,INT2",
+                "name": "ALARM_INT2"
+            },
+            {
+                "addr": "DB17,INT4",
+                "name": "ALARM_INT4"
+            },
+            {
+                "addr": "DB17,INT6",
+                "name": "ALARM_INT6"
+            },
+            {
+                "addr": "M0.5",
+                "name": "CLOCK 1HZ"
+            },
+            {
+                "addr": "DB17,INT32",
+                "name": "CB_LENGTH"
+            },
+            {
+                "addr": "DB17,INT34",
+                "name": "CB_WIDTH"
+            },
+            {
+                "addr": "DB17,INT36",
+                "name": "CB_HEIGHT"
+            },
+            {
+                "addr": "DB17,INT38",
+                "name": "CB_WEIGHT"
+            },
+            {
+                "addr": "DB17,INT40",
+                "name": "CB_Tolerance_Length"
+            },
+            {
+                "addr": "DB17,INT42",
+                "name": "CB_Tolerance_Width"
+            },
+            {
+                "addr": "DB17,INT44",
+                "name": "CB_Tolerance_Height"
+            },
+            {
+                "addr": "DB17,INT46",
+                "name": "CB_Tolerance_Weight"
+            },
+            {
+                "addr": "DB23,S0.210",
+                "name": "CB_Barcode"
+            },
+            {
+                "addr": "M6.0",
+                "name": "Machine_Run"
+            },
+            {
+                "addr": "DB17,DINT16",
+                "name": "CB Limit Count"
+            },
+            {
+                "addr": "DB17,DINT56",
+                "name": "Box Live Count"
+            },
+            {
+                "addr": "DB17,INT20",
+                "name": "Min_Length_Box"
+            },
+            {
+                "addr": "DB17,INT22",
+                "name": "Max_Length_Box"
+            },
+            {
+                "addr": "DB17,INT24",
+                "name": "Min_Width_Box"
+            },
+            {
+                "addr": "DB17,INT26",
+                "name": "Max_Width_Box"
+            },
+            {
+                "addr": "DB17,INT28",
+                "name": "Min_Height_Box"
+            },
+            {
+                "addr": "DB17,INT30",
+                "name": "Max_Height_Box"
+            },
+            {
+                "addr": "DB17,DINT52",
+                "name": "Min_Weight_Box"
+            },
+            {
+                "addr": "DB17,DINT48",
+                "name": "Max_Weight_Box"
+            },
+            {
+                "addr": "MW130",
+                "name": "Cycle_Status"
+            },
+            {
+                "addr": "MW12",
+                "name": "Live Weight"
+            },
+            {
+                "addr": "DB17,X1.0",
+                "name": "Invalid BARCODE PLC bit"
+            },
+            {
+                "addr": "DB2,S6322.210",
+                "name": "Scan_Barcode_infeed"
+            },
+            {
+                "addr": "M184.4",
+                "name": "INTERNET_CONNECTION_ERROR"
+            },
+            {
+                "addr": "DB17,X6.0",
+                "name": "FTP_FOLDER_UNAVAILABLE"
+            },
+            {
+                "addr": "DB17,X6.3",
+                "name": "USER_NOT_LOGGED_IN"
+            },
+            {
+                "addr": "MW154",
+                "name": "MULTIPLE PARCELS FOUND ON CW"
+            },
+            {
+                "addr": "MD168",
+                "name": "REAL VOLUME IS GREATER THAN BOX VOLUME"
+            },
+            {
+                "addr": "MD164",
+                "name": "Real - REAL VOLUME IS GREATER THAN BOX VOLUME"
+            },
+            {
+                "addr": "DB17,X6.5",
+                "name": "IMAGE NOT RECIEVED"
+            },
+            {
+                "addr": "M185.5",
+                "name": "RegexMatched_for_Valid"
+            },
+            {
+                "addr": "M185.6",
+                "name": "USER LOGGED SIGNAL"
+            },
+            {
+                "addr": "DB17,X0.7",
+                "name": "IP camera disconnect error"
+            },
+            {
+                "addr": "MD206",
+                "name": "LKVE_WEIGHT"
+            },
+            {
+                "addr": "M320.2",
+                "name": "TARE_WEIGHT"
+            },
+            {
+                "addr": "Q1.1",
+                "name": "TARE_WEIGHT_OUTPUT"
+            }
+        ]
+    }
+]

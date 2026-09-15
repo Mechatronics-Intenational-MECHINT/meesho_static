@@ -1,7 +1,7 @@
 // workers/inscanApiWorker.js
 const fp                 = require("fastify-plugin");
 const { Worker }         = require("bullmq");
-const axios               = require("axios");
+const axios              = require("axios");
 const redisConnection    = require("../config/redisConnection");
 const { withTokenRetry } = require("../config/tokenManager");
 const Boxdata            = require("../models/Boxdata");
@@ -11,30 +11,44 @@ const INSCAN_API_URL      = process.env.MEESHO_INSCAN_URL || "https://prod-app.v
 const INSCAN_MAX_ATTEMPTS = 5;
 const INSCAN_RETRY_DELAY  = 3000;
 
+// ENV se slave_sorter_id fetch ki gayi hai
+const PHYSICAL_SORTER_ID  = process.env.SLAVE_SORTER_ID || "";
+
 const bullConnection = { ...redisConnection, maxRetriesPerRequest: null };
 
 // ── Inscan API call with retry ────────────────────────────────────────────────
 
 async function callInscanApi(wbn) {
-  const payload = { waybill_no: wbn };
+  // physical_sorter_id ko payload mein add kiya gaya hai
+  const payload = {
+    waybill_no: String(wbn || "").trim(),
+    physical_sorter_id: PHYSICAL_SORTER_ID,
+  };
+
   let lastErr;
 
   for (let attempt = 1; attempt <= INSCAN_MAX_ATTEMPTS; attempt++) {
     try {
-      console.log("payload",payload,token)
       const response = await withTokenRetry(async (token) => {
+        let cleanToken = String(token || "").trim();
+        if (cleanToken.toLowerCase().startsWith("bearer ")) {
+          cleanToken = cleanToken.slice(7).trim();
+        }
+
+        console.log(`\n📤 [inscanApi] Attempt ${attempt}/${INSCAN_MAX_ATTEMPTS} Calling Inscan API...`);
+        console.log("📦 Payload:", JSON.stringify(payload));
+        console.log("🔑 Token (masked):", cleanToken ? `***${cleanToken.slice(-6)}` : "MISSING");
+
         return await axios.post(INSCAN_API_URL, payload, {
           headers: {
-            "Content-Type":  "application/json",
-            "Authorization": `${token}`,
+            "Content-Type": "application/json",
+            Authorization: cleanToken,
           },
-          
           timeout: 10_000,
         });
-        
       });
-      console.log(payload)
-          console.log(token)
+
+      console.log(`✅ [inscanApi] HTTP ${response.status} Success:`, response.data);
 
       return {
         success:  true,
@@ -46,15 +60,17 @@ async function callInscanApi(wbn) {
 
     } catch (err) {
       const status = err.response?.status;
-      console.error(`❌ inscanApi [attempt ${attempt}/${INSCAN_MAX_ATTEMPTS}]: status=${status} message=${err.message}`);
+      const respData = err.response?.data;
+      console.error(`❌ inscanApi [attempt ${attempt}/${INSCAN_MAX_ATTEMPTS}]: status=${status} response=`, JSON.stringify(respData || err.message));
       lastErr = err;
 
+      // 400 Bad Request par retry na karein (invalid barcode / bad schema)
       if (status === 400) {
         console.warn(`⚠️  inscanApi: 400 Bad Request — not retrying`);
         return {
           success:  false,
           payload,
-          response: err.response?.data || { error: err.message },
+          response: respData || { error: err.message },
           status,
           attempts: attempt,
         };
@@ -71,7 +87,7 @@ async function callInscanApi(wbn) {
   return {
     success:  false,
     payload,
-    response: { error: lastErr?.message || "Max attempts reached" },
+    response: lastErr?.response?.data || { error: lastErr?.message || "Max attempts reached" },
     status:   lastErr?.response?.status || 0,
     attempts: INSCAN_MAX_ATTEMPTS,
   };
@@ -149,5 +165,5 @@ module.exports = fp(async function inscanApiWorkerPlugin(fastify) {
     await worker.close();
   });
 
-  console.log("⚙️  inscanApiWorker plugin started");
+  console.log(`⚙️  inscanApiWorker plugin started (physical_sorter_id="${PHYSICAL_SORTER_ID}")`);
 });

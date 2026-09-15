@@ -1,17 +1,4 @@
 // workers/imageFetchService.js
-//
-// DWS Image Fetch Service — Fastify Plugin
-//
-// Periodically polls Meesho's cursor-based image-request API to find out
-// which AWBs / DBO-IBO ranges need images pushed, and queues each result
-// into ImageRequest for imageUploadService to pick up independently.
-//
-// Cursor lives on the AuthToken doc's `next_cursor` field (shared with the
-// rest of the auth layer) so it survives restarts. Scheduling follows
-// Meesho's own `next_call_after_seconds` (kept in memory only — not
-// persisted, since losing it just means the next tick falls back to the
-// default delay and Meesho's next response re-syncs the rhythm).
-
 const fp = require("fastify-plugin");
 const axios = require("axios");
 const { withTokenRetry } = require("../config/tokenManager");
@@ -22,7 +9,7 @@ const logger = require("../utils/logger");
 
 const FETCH_API_URL =
   process.env.MEESHO_IMAGE_FETCH_URL ||
-  "https://env16115-app.dev.meeshogcp.in/api/v1/sorter/image/get";
+  "https://prod-app.valmo.in/api/v1/sorter/image/get";
 const DEFAULT_DELAY_MS = 60_000;
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5_000;
@@ -33,42 +20,57 @@ async function recordApiStatus({ apiName, url, payload, statusCode, success, res
   try {
     await ApiStatus.create({ apiName, url, payload, statusCode, success, response, attempt });
   } catch (err) {
-    logger.error(`❌ imageFetch: failed to record api_status: ${err.message}`);
+    console.error("❌ imageFetch: DB logging failed:", err.message);
   }
 }
 
 async function getCursor() {
-  const doc = await AuthToken.findOne({});
-  return doc?.next_cursor || null;
+  try {
+    const doc = await AuthToken.findOne({});
+    return doc?.next_cursor || "";
+  } catch (err) {
+    console.error("❌ imageFetch: Failed to read cursor from DB:", err.message);
+    return "";
+  }
 }
 
 async function saveCursor(cursor) {
-  await AuthToken.findOneAndUpdate(
-    {},
-    { next_cursor: cursor, updated_at: new Date() },
-    { upsert: true }
-  );
+  if (!cursor) return;
+  try {
+    await AuthToken.findOneAndUpdate(
+      {},
+      { $set: { next_cursor: cursor, updated_at: new Date() } },
+      { upsert: true }
+    );
+    console.log(`💾 imageFetch: Saved next_cursor -> ${cursor}`);
+  } catch (err) {
+    console.error("❌ imageFetch: Failed to save cursor:", err.message);
+  }
 }
 
-// Idempotent via unique index on {type, awb} for AWB rows — re-running the
-// same cursor after a failure won't duplicate queued requests.
 async function queueResults(data) {
   const ops = [];
 
-  for (const awb of data.awb || []) {
+  const awbList = Array.isArray(data?.awb) ? data.awb : [];
+  for (const awb of awbList) {
+    const cleanAwb = String(awb).trim();
+    if (!cleanAwb) continue;
+
     ops.push({
       updateOne: {
-        filter: { type: "AWB", awb },
+        filter: { type: "AWB", awb: cleanAwb },
         update: {
-          $setOnInsert: { type: "AWB", awb, status: "pending", createdAt: new Date() },
+          $setOnInsert: { type: "AWB", awb: cleanAwb, status: "pending", createdAt: new Date() },
         },
         upsert: true,
       },
     });
   }
 
-  if (data["dbo/ibo"] && Array.isArray(data["dbo/ibo_ranges"])) {
-    for (const range of data["dbo/ibo_ranges"]) {
+  const dboList = data?.["dbo/ibo_ranges"] || [];
+  if (Array.isArray(dboList)) {
+    for (const range of dboList) {
+      if (!range?.from || !range?.to) continue;
       ops.push({
         updateOne: {
           filter: { type: "DBO/IBO", dbo_ibo_from: range.from, dbo_ibo_to: range.to },
@@ -89,20 +91,39 @@ async function queueResults(data) {
 
   if (ops.length) {
     await ImageRequest.bulkWrite(ops, { ordered: false });
-    logger.info(`📥 imageFetch: queued ${ops.length} request(s)`);
+    // console.log(`📥 imageFetch: Successfully queued ${ops.length} request(s) in ImageRequest collection`);
+  } else {
+    console.log(`ℹ️  imageFetch: No AWBs or DBO/IBO ranges requested in this cycle.`);
   }
 }
 
 async function fetchTick() {
-  const payload = { cursor: await getCursor() };
+  const currentCursor = await getCursor();
+
+  // Exactly matches doc: only "cursor" key
+  const payload = {
+    cursor: currentCursor || "",
+  };
+
   let lastErr;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const res = await withTokenRetry(async (token) => {
-        const headers = { "Content-Type": "application/json", Authorization: `${token}` };
+        let cleanToken = String(token || "").trim();
+        if (cleanToken.toLowerCase().startsWith("bearer ")) {
+          cleanToken = cleanToken.slice(7).trim();
+        }
+
+        const headers = {
+          "Content-Type": "application/json",
+          Authorization: cleanToken,
+        };
+
         return axios.post(FETCH_API_URL, payload, { headers, timeout: 15_000 });
       });
+
+      // console.log(`✅ [imageFetch] HTTP ${res.status} Response:`, JSON.stringify(res.data, null, 2));
 
       await recordApiStatus({
         apiName: "imageFetch",
@@ -116,22 +137,22 @@ async function fetchTick() {
 
       await queueResults(res.data);
 
-      // Cursor advances only on success — a failed attempt reuses the same
-      // cursor next time, so nothing gets skipped or duplicated.
-      if (res.data.next_cursor) await saveCursor(res.data.next_cursor);
+      if (res.data?.next_cursor) {
+        await saveCursor(res.data.next_cursor);
+      }
 
-      const delayMs =
-        Number(res.data.next_call_after_seconds) > 0
-          ? Number(res.data.next_call_after_seconds) * 1000
-          : DEFAULT_DELAY_MS;
+      const nextIntervalSeconds = Number(res.data?.next_call_after_seconds);
+      const delayMs = nextIntervalSeconds > 0 ? nextIntervalSeconds * 1000 : DEFAULT_DELAY_MS;
 
-      logger.info(`✅ imageFetch: tick done, next call in ${delayMs / 1000}s`);
+      // console.log(`⏱️  [imageFetch] Next call scheduled in ${delayMs / 1000} seconds.`);
       scheduleNext(delayMs);
       return;
     } catch (err) {
       const status = err.response?.status || 0;
+      const respData = err.response?.data;
       lastErr = err;
-      logger.error(`❌ imageFetch: attempt ${attempt}/${MAX_ATTEMPTS} failed — HTTP ${status}`);
+
+      console.error(`❌ [imageFetch ERROR Attempt ${attempt}/${MAX_ATTEMPTS}] HTTP ${status}:`, JSON.stringify(respData || err.message));
 
       await recordApiStatus({
         apiName: "imageFetch",
@@ -139,7 +160,7 @@ async function fetchTick() {
         payload,
         statusCode: status,
         success: false,
-        response: err.response?.data || { error: err.message },
+        response: respData || { error: err.message },
         attempt,
       });
 
@@ -149,21 +170,21 @@ async function fetchTick() {
     }
   }
 
-  logger.error(`❌ imageFetch: all attempts exhausted — ${lastErr?.message}`);
+  console.error(`❌ [imageFetch] All attempts exhausted: ${lastErr?.message}`);
   scheduleNext(DEFAULT_DELAY_MS);
 }
 
 function scheduleNext(delayMs) {
+  if (timer) clearTimeout(timer);
   timer = setTimeout(() => fetchTick(), delayMs);
 }
 
 module.exports = fp(async function imageFetchPlugin(fastify) {
-  setTimeout(() => fetchTick(), 10_000);
+  console.log("⚙️  imageFetchService plugin registered. Triggering initial fetch in 5 seconds...");
+  setTimeout(() => fetchTick(), 5_000);
 
   fastify.addHook("onClose", async () => {
     if (timer) clearTimeout(timer);
-    logger.info("🛑 imageFetchService stopped");
+    console.log("🛑 imageFetchService stopped");
   });
-console.log("⚙️  imageFetchService started (cursor-driven)")
-  logger.info("⚙️  imageFetchService started (cursor-driven)");
 });

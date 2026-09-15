@@ -1,22 +1,9 @@
 // workers/imageUploadService.js
-//
-// DWS Image Upload Service — Fastify Plugin
-//
-// Picks up ImageRequest docs, resolves each to a local image file, and
-// pushes to Meesho's upload API strictly one image at a time (next image
-// only after the previous one succeeds or a 5s timeout — per API contract).
-// Meesho owns GCS storage now; this service never touches S3.
-//
-// For type=AWB requests, the corresponding Boxdata row's imageSent /
-// imageProcessing / imageRetryCount / imageLastError fields are kept in
-// sync — same pattern already used for inscanSent / logSent on that model.
-
 const fp = require("fastify-plugin");
 const axios = require("axios");
 const FormData = require("form-data");
 const fs = require("fs");
 const path = require("path");
-const moment = require("moment-timezone");
 const { withTokenRetry } = require("../config/tokenManager");
 const ImageRequest = require("../models/ImageRequest");
 const ImageUploadLog = require("../models/ImageUploadLog");
@@ -25,68 +12,120 @@ const logger = require("../utils/logger");
 
 const UPLOAD_API_URL =
   process.env.MEESHO_IMAGE_UPLOAD_URL ||
-  "https://env16115-app.dev.meeshogcp.in/api/v1/sorter/image/upload";
-const PER_IMAGE_TIMEOUT_MS = 5_000;
+  "https://prod-app.valmo.in/api/v1/sorter/image/upload";
+const PER_IMAGE_TIMEOUT_MS = 10_000;
 const TICK_INTERVAL_MS = 15_000;
-const MAX_IMAGE_BYTES = 1 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 1 * 1024 * 1024; // 1 MB per doc
 const MAX_RETRIES = 5;
+
+// Env variable se slave_sorter_id read kiya gaya hai
+const PHYSICAL_SORTER_ID = process.env.SLAVE_SORTER_ID || "";
 
 let timer = null;
 
-// ── AWB → local image(s), via existing Boxdata.imagePath ──────────────────
-async function resolveAwbImages(box) {
-  if (!box?.imagePath || box.imagePath === "image_missing") return [];
-
-  const cleanPath = box.imagePath.startsWith("/") ? box.imagePath.slice(1) : box.imagePath;
-  const fullPath = path.join(process.cwd(), cleanPath);
-  if (!fs.existsSync(fullPath)) return [];
-
-  return [{ path: fullPath, scan_time: box.scantime, flow_type: "FWD" }];
+// UTC ISO format ending in Z per doc (e.g. 2026-06-12T14:03:11Z)
+function toDocTimestamp(raw) {
+  try {
+    if (!raw) return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) {
+      return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+    }
+    return d.toISOString().replace(/\.\d{3}Z$/, "Z");
+  } catch {
+    return new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  }
 }
 
-// TODO: implement once DBO/IBO local capture layout (folder/hub tagging) is confirmed.
-async function resolveDboIboImages(/* request */) {
-  logger.warn("⚠️  imageUpload: DBO/IBO resolution not implemented yet — skipping");
+async function resolveAwbImages(box) {
+  if (!box?.imagePath || box.imagePath === "image_missing") {
+    console.warn(`⚠️  [imageUpload] Boxdata imagePath missing or marked 'image_missing' for AWB: ${box?.barcode}`);
+    return [];
+  }
+
+  const cleanPath = box.imagePath.startsWith("/") ? box.imagePath.slice(1) : box.imagePath;
+  const fullPath = path.isAbsolute(box.imagePath) ? box.imagePath : path.join(process.cwd(), cleanPath);
+
+  if (!fs.existsSync(fullPath)) {
+    console.warn(`⚠️  [imageUpload] File not found on disk at: ${fullPath}`);
+    return [];
+  }
+
+  return [
+    {
+      path: fullPath,
+      scan_time: toDocTimestamp(box.scantime),
+      flow_type: "FWD",
+    },
+  ];
+}
+
+async function resolveDboIboImages() {
   return [];
 }
 
 function isWithinSizeCap(filePath) {
-  return fs.statSync(filePath).size <= MAX_IMAGE_BYTES;
+  try {
+    const size = fs.statSync(filePath).size;
+    return size <= MAX_IMAGE_BYTES;
+  } catch {
+    return false;
+  }
 }
 
 async function uploadOne({ type, awb, imagePath, scan_time, flow_type }) {
   const form = new FormData();
   form.append("type", type);
-  form.append("awb", awb);
-  form.append("scan_time", scan_time || moment().tz("Asia/Kolkata").format("YYYY-MM-DDTHH:mm:ss"));
-  if (type === "AWB") form.append("flow_type", flow_type || "FWD");
+  form.append("awb", String(awb).trim());
+  form.append("scan_time", scan_time);
+  
+  // Physical sorter ID requirement appended
+  form.append("physical_sorter_id", PHYSICAL_SORTER_ID);
+
+  if (type === "AWB") {
+    form.append("flow_type", flow_type || "FWD");
+  }
   form.append("image", fs.createReadStream(imagePath));
 
-  const doUpload = withTokenRetry(async (token) => {
-    const headers = { ...form.getHeaders(), Authorization: `${token}` };
-    return axios.post(UPLOAD_API_URL, form, { headers, timeout: PER_IMAGE_TIMEOUT_MS });
+  console.log(`📤 [imageUpload] Uploading image -> AWB: ${awb}, physical_sorter_id: ${PHYSICAL_SORTER_ID}, ScanTime: ${scan_time}, Path: ${imagePath}`);
+
+  return withTokenRetry(async (token) => {
+    let cleanToken = String(token || "").trim();
+    if (cleanToken.toLowerCase().startsWith("bearer ")) {
+      cleanToken = cleanToken.slice(7).trim();
+    }
+
+    const headers = {
+      ...form.getHeaders(),
+      Authorization: cleanToken,
+    };
+
+    return axios.post(UPLOAD_API_URL, form, {
+      headers,
+      timeout: PER_IMAGE_TIMEOUT_MS,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
   });
-
-  const timeoutGuard = new Promise((_, reject) =>
-    setTimeout(() => reject(new Error("upload timed out after 5s")), PER_IMAGE_TIMEOUT_MS)
-  );
-
-  return Promise.race([doUpload, timeoutGuard]);
 }
 
 async function logAttempt({ request, img, res, err, attempt }) {
-  await ImageUploadLog.create({
-    requestId: request._id,
-    type: request.type,
-    awb: request.awb,
-    imagePath: img.path,
-    scan_time: img.scan_time,
-    flow_type: img.flow_type,
-    statusCode: res ? res.status : err?.response?.status || 0,
-    success: !!res,
-    response: res ? res.data : err?.response?.data || { error: err?.message },
-    attempt,
-  });
+  try {
+    await ImageUploadLog.create({
+      requestId: request._id,
+      type: request.type,
+      awb: request.awb,
+      imagePath: img.path,
+      scan_time: img.scan_time,
+      flow_type: img.flow_type,
+      statusCode: res ? res.status : err?.response?.status || 0,
+      success: !!res,
+      response: res ? res.data : err?.response?.data || { error: err?.message },
+      attempt,
+    });
+  } catch (logErr) {
+    console.error("❌ imageUpload: logAttempt DB error:", logErr.message);
+  }
 }
 
 async function releaseBoxLock(awb, patch) {
@@ -96,12 +135,12 @@ async function releaseBoxLock(awb, patch) {
 async function processRequest(request) {
   request.attempts += 1;
 
-  // Lock + retry-cap check only applies to AWB requests — DBO/IBO has no barcode.
   let box = null;
   if (request.type === "AWB") {
     box = await Boxdata.findOne({ barcode: request.awb });
 
     if (!box) {
+      console.warn(`⚠️  [imageUpload] No matching Boxdata row for AWB: ${request.awb}`);
       request.status = "no_match";
       request.lastError = "no matching Boxdata row for this AWB";
       await request.save();
@@ -109,6 +148,7 @@ async function processRequest(request) {
     }
 
     if (box.imageRetryCount >= MAX_RETRIES) {
+      console.warn(`⚠️  [imageUpload] Max retries reached for AWB: ${request.awb}`);
       request.status = "failed";
       request.lastError = "max retries exceeded";
       await request.save();
@@ -117,11 +157,12 @@ async function processRequest(request) {
 
     const locked = await Boxdata.findOneAndUpdate(
       { barcode: request.awb, imageProcessing: false },
-      { imageProcessing: true },
+      { $set: { imageProcessing: true } },
       { new: true }
     );
+
     if (!locked) {
-      logger.warn(`⚠️  imageUpload: skipped, already processing: ${request.awb}`);
+      console.log(`⚠️  [imageUpload] AWB ${request.awb} is currently being processed by another worker.`);
       return;
     }
     box = locked;
@@ -129,8 +170,7 @@ async function processRequest(request) {
 
   let images = [];
   try {
-    images =
-      request.type === "AWB" ? await resolveAwbImages(box) : await resolveDboIboImages(request);
+    images = request.type === "AWB" ? await resolveAwbImages(box) : await resolveDboIboImages(request);
   } catch (err) {
     request.status = "failed";
     request.lastError = `resolve error: ${err.message}`;
@@ -146,7 +186,7 @@ async function processRequest(request) {
 
   if (!images.length) {
     request.status = "no_match";
-    request.lastError = "no local image found";
+    request.lastError = "no local image found on disk";
     await request.save();
     if (box) {
       await releaseBoxLock(request.awb, {
@@ -161,7 +201,7 @@ async function processRequest(request) {
 
   for (const img of images) {
     if (!isWithinSizeCap(img.path)) {
-      logger.warn(`⚠️  imageUpload: skipping oversize image ${img.path}`);
+      console.warn(`⚠️  [imageUpload] Image exceeds 1MB limit: ${img.path}`);
       continue;
     }
 
@@ -174,31 +214,30 @@ async function processRequest(request) {
         flow_type: img.flow_type,
       });
 
+      console.log(`✅ [imageUpload] Upload success for ${request.awb}! Response:`, res.data);
       await logAttempt({ request, img, res, attempt: request.attempts });
       matchedPaths.push(img.path);
-
-      // DBO/IBO images can be dropped locally once pushed; AWB images stay
-      // on disk for the dashboard, per the Meesho doc.
-      if (request.type === "DBO/IBO") fs.unlink(img.path, () => {});
     } catch (err) {
       anyFailed = true;
+      const respErr = err.response?.data ? JSON.stringify(err.response.data) : err.message;
+      console.error(`❌ [imageUpload] Upload failed for ${request.awb}:`, respErr);
       await logAttempt({ request, img, err, attempt: request.attempts });
-      logger.error(`❌ imageUpload: failed for ${request.awb || request._id}: ${err.message}`);
     }
   }
 
   request.matchedImagePaths = matchedPaths;
   request.status = anyFailed ? "failed" : matchedPaths.length ? "uploaded" : "no_match";
-  request.lastError = anyFailed ? "one or more images failed — will retry" : "";
+  request.lastError = anyFailed ? "one or more images failed upload" : "";
   await request.save();
 
-  // ── Sync back onto Boxdata (AWB requests only) ──────────────────────────
   if (box) {
     if (!anyFailed && matchedPaths.length) {
       await releaseBoxLock(request.awb, {
-        imageSent: "success",
-        imageProcessing: false,
-        imageLastError: "",
+        $set: {
+          imageSent: "success",
+          imageProcessing: false,
+          imageLastError: "",
+        },
       });
     } else {
       await releaseBoxLock(request.awb, {
@@ -219,27 +258,28 @@ async function uploadTick() {
       attempts: { $lt: MAX_RETRIES },
     })
       .sort({ createdAt: 1 })
-      .limit(50);
+      .limit(20);
 
-    if (!pending.length) return;
+    if (!pending.length) {
+      return;
+    }
 
-    logger.info(`📤 imageUpload: processing ${pending.length} request(s)`);
+    console.log(`📤 [imageUpload] Found ${pending.length} pending image upload request(s). Processing sequentially...`);
     for (const request of pending) {
-      await processRequest(request); // sequential — enforces the one-at-a-time rule
+      await processRequest(request);
     }
   } catch (err) {
-    logger.error(`❌ imageUpload tick error: ${err.message}`);
+    console.error("❌ [imageUpload] uploadTick error:", err.message);
   }
 }
 
 module.exports = fp(async function imageUploadPlugin(fastify) {
-  setTimeout(() => uploadTick(), 15_000);
+  console.log(`⚙️  imageUploadService plugin registered (physical_sorter_id="${PHYSICAL_SORTER_ID}")`);
+  setTimeout(() => uploadTick(), 10_000);
   timer = setInterval(() => uploadTick(), TICK_INTERVAL_MS);
 
   fastify.addHook("onClose", async () => {
-    clearInterval(timer);
-    logger.info("🛑 imageUploadService stopped");
+    if (timer) clearInterval(timer);
+    console.log("🛑 imageUploadService stopped");
   });
-
-  logger.info("⚙️  imageUploadService started");
 });

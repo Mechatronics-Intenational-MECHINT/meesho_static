@@ -16,6 +16,7 @@ const Status = require("./models/Status");
 const Boxdata = require("./models/Boxdata");
 
 
+
 const startAlarmDurationWatcher = require("./services/alarmDurationWatcher");
 const { init: initTokenManager } = require("./config/tokenManager");
 
@@ -37,7 +38,7 @@ const calibrationQueue = require("./queues/calibrationQueue");
 const { createBullBoard } = require("@bull-board/api");
 const { FastifyAdapter } = require("@bull-board/fastify");
 const { BullMQAdapter } = require("@bull-board/api/bullMQAdapter");
-
+const { startSettingsAutoSend, stopSettingsAutoSend } = require("./services/sendSettingToNodered");
 // DWS Image Folder
 const dwsImageDir = "D:\\Images";
 
@@ -444,7 +445,18 @@ fastify.setNotFoundHandler((req, reply) => {
     reply.sendFile("index.html");
   }
 });
+// mongoose.connect(process.env.MONGO_URI)
+//   .then(() => {
+//     console.log("✅ MongoDB connected");
+//     startSettingsAutoSend(); // <-- yahan se 10-sec loop shuru hoga
+//   })
+//   .catch((err) => console.error("❌ MongoDB connection failed:", err.message));
 
+// // Graceful shutdown
+// process.on("SIGTERM", () => {
+//   stopSettingsAutoSend();
+//   process.exit(0);
+// });
 // ---------------- START ----------------
 fastify.listen({ port: 5001, host: "0.0.0.0" }, (err, address) => {
   if (err) {

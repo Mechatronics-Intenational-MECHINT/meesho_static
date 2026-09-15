@@ -101,6 +101,9 @@ const LABELS = {
 const SENSITIVE = new Set(['authorization_token']);
 const SUMMARY_FIELDS = ['machineUsername'];
 
+// How often (ms) settings are auto-pushed to Node-RED
+const AUTO_SEND_INTERVAL_MS = 1000;
+
 const mask = (key, val) => {
   if (val == null || val === '') return null;
   const s = String(val);
@@ -207,6 +210,12 @@ const SettingsPage = () => {
   const [editField, setEditField] = useState(null);
   const [toasts, setToasts] = useState([]);
 
+  // Always holds the latest settings so the 10s interval never sends stale data
+  const settingsRef = useRef(settings);
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
+
   useEffect(() => {
     axios.get('http://localhost:5001/api/settings/settings-data')
       .then((res) => setSettings(res.data))
@@ -234,45 +243,58 @@ const SettingsPage = () => {
     }
   };
 
-const handleDownload = async () => {
-  try {
-    const res = await axios.post(
-      'http://localhost:1880/download-report',
-      {
-        value: true
-      }
-    );
-
-    if (res.status === 200) {
-      addToast('Tare Sent Success', 'success');
-    } else {
-      addToast('Node-RED did not acknowledge the request', 'warning');
-    }
-  } catch (err) {
-    console.error('❌ Failed to send download request:', err.message);
-    addToast('Failed to send download request', 'danger');
-  }
-};
-
-  const handleSendToNodeRed = async () => {
+  const handleDownload = async () => {
     try {
-      const payload = Object.entries(LABELS).reduce((acc, [k, label]) => {
-        acc[k] = settings[k] ?? '';
+      const res = await axios.post(
+        'http://localhost:1880/download-report',
+        {
+          value: true
+        }
+      );
+
+      if (res.status === 200) {
+        addToast('Tare Sent Success', 'success');
+      } else {
+        addToast('Node-RED did not acknowledge the request', 'warning');
+      }
+    } catch (err) {
+      console.error('❌ Failed to send download request:', err.message);
+      addToast('Failed to send download request', 'danger');
+    }
+  };
+
+  // Sends the current settings to Node-RED.
+  // silent = true suppresses toasts (used by the auto/interval sender so it
+  // doesn't spam the UI every 10 seconds); manual button clicks still show toasts.
+  const handleSendToNodeRed = useCallback(async (silent = false) => {
+    try {
+      const latestSettings = settingsRef.current;
+      const payload = Object.entries(LABELS).reduce((acc, [k]) => {
+        acc[k] = latestSettings[k] ?? '';
         return acc;
       }, {});
       const res = await axios.post('http://localhost:1880/settings-receive', payload);
       if (res.status === 200) {
-        addToast('Sent to DWS Machine successfully', 'success');
-        console.log("send");
+        if (!silent) addToast('Sent to DWS Machine successfully', 'success');
+        console.log('send');
       } else {
-        addToast('DWS Machine did not acknowledge', 'warning');
-        console.log("not sent")
+        if (!silent) addToast('DWS Machine did not acknowledge', 'warning');
+        console.log('not sent');
       }
     } catch (err) {
       console.error('❌ Failed to send:', err.message);
-      addToast('Failed to send to DWS Machine', 'danger');
+      if (!silent) addToast('Failed to send to DWS Machine', 'danger');
     }
-  };
+  }, [addToast]);
+
+  // Auto-send settings to Node-RED every 10 seconds
+  // useEffect(() => {
+  //   const intervalId = setInterval(() => {
+  //     handleSendToNodeRed(true); // silent = true, no toast spam every 10s
+  //   }, AUTO_SEND_INTERVAL_MS);
+
+  //   return () => clearInterval(intervalId);
+  // }, [handleSendToNodeRed]);
 
   const currentTab = TABS.find((t) => t.id === activeTab);
 
@@ -290,7 +312,7 @@ const handleDownload = async () => {
             {/* <Icon.Download /> */}
             Tare Weight
           </button>
-          <button className="sp-btn sp-btn-primary" onClick={handleSendToNodeRed}>
+          <button className="sp-btn sp-btn-primary" onClick={() => handleSendToNodeRed(false)}>
             <Icon.Send />
             Send to DWS
           </button>
