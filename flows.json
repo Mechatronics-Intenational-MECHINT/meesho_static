@@ -280,7 +280,7 @@
         "once": false,
         "onceDelay": 0.1,
         "topic": "",
-        "payload": "3760",
+        "payload": "3260",
         "payloadType": "num",
         "x": 130,
         "y": 900,
@@ -1717,7 +1717,7 @@
         "id": "23af19671488b08e",
         "type": "inject",
         "z": "405a4070e73faf08",
-        "name": "Every 1s",
+        "name": "Every 5s",
         "props": [],
         "repeat": "5",
         "crontab": "",
@@ -2611,9 +2611,9 @@
         "type": "s7 out",
         "z": "405a4070e73faf08",
         "endpoint": "34c4a46da0fe6e2c",
-        "variable": "PLC SERVER COMMUNICATION ALARM",
+        "variable": "",
         "name": "",
-        "x": 910,
+        "x": 850,
         "y": 100,
         "wires": []
     },
@@ -2621,7 +2621,7 @@
         "id": "34c4a46da0fe6e2c",
         "type": "s7 endpoint",
         "transport": "iso-on-tcp",
-        "address": "192.168.80.31",
+        "address": "192.168.85.31",
         "port": "102",
         "rack": "0",
         "slot": "1",
@@ -2859,6 +2859,18 @@
             {
                 "addr": "Q1.1",
                 "name": "TARE_WEIGHT_OUTPUT"
+            },
+            {
+                "addr": "DB2,S7450.210",
+                "name": "HHD Barcode NWLS"
+            },
+            {
+                "addr": "I0.6",
+                "name": "DWS SENSOR"
+            },
+            {
+                "addr": "M320.6",
+                "name": "TakeSnap"
             }
         ]
     }
