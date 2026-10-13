@@ -57,59 +57,83 @@ const Home = () => {
   const [flash, setFlash] = useState(false);
   const flashTimerRef = useRef(null);
 
+  // Keep the websocket alive when the backend restarts or the network drops.
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:5001/bin-data");
+    let ws;
+    let reconnectTimer;
+    let stopped = false;
+    let attempts = 0;
 
-    ws.onopen = () => console.log("📦 Connected to /bin-data WS");
+    const connect = () => {
+      if (stopped) return;
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const hostname = window.location.hostname || "localhost";
+      ws = new WebSocket(`${protocol}//${hostname}:5001/bin-data`);
 
-    ws.onmessage = (evt) => {
-      try {
-        const data = JSON.parse(evt.data);
+      ws.onopen = () => {
+        attempts = 0;
+        console.log("Connected to /bin-data WS");
+      };
 
-        if (data.type === "image-update") {
-          setBoxDetails((prev) =>
-            prev.barcode === data.barcode ? { ...prev, imagePath: data.imagePath } : prev
-          );
-          setBins((prev) =>
-            prev.map((b) => (b.barcode === data.barcode ? { ...b, imagePath: data.imagePath } : b))
-          );
-          return;
+      ws.onmessage = (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          if (data.type === "image-update") {
+            setBoxDetails((prev) =>
+              prev.barcode === data.barcode
+                ? { ...prev, imagePath: data.imagePath }
+                : prev
+            );
+            setBins((prev) => prev.map((b) =>
+              b.barcode === data.barcode ? { ...b, imagePath: data.imagePath } : b
+            ));
+            return;
+          }
+
+          setBoxDetails((prev) => {
+            const newParcel = Boolean(data.barcode && data.barcode !== prev.barcode);
+            return {
+              barcode: data.barcode ?? prev.barcode,
+              length: data.length ?? prev.length,
+              breadth: data.breadth ?? prev.breadth,
+              height: data.height ?? prev.height,
+              weight: data.weight ?? prev.weight,
+              volumetricWeight: data.volumetricWeight ?? prev.volumetricWeight,
+              RealVolume: data.RealVolume ?? prev.RealVolume,
+              Volume: data.Volume ?? prev.Volume,
+              date: data.date ?? prev.date,
+              time: data.time ?? prev.time,
+              // Never carry the previous parcel's image into a new scan.
+              imagePath: data.imagePath ?? (newParcel ? null : prev.imagePath),
+              status: data.status ?? prev.status,
+            };
+          });
+
+          setBins((prev) => [data, ...prev].slice(0, 1000));
+          setLastMsgAt(Date.now());
+          setFlash(true);
+          clearTimeout(flashTimerRef.current);
+          flashTimerRef.current = setTimeout(() => setFlash(false), 550);
+        } catch (err) {
+          console.error("Error parsing bin-data WS message", err);
         }
+      };
 
-        setBoxDetails((prev) => ({
-          barcode:    data.barcode    ?? prev.barcode,
-          length:     data.length     ?? prev.length,
-          breadth:    data.breadth    ?? prev.breadth,
-          height:     data.height     ?? prev.height,
-          weight:     data.weight     ?? prev.weight,
-          volumetricWeight: data.volumetricWeight ?? prev.volumetricWeight,
-          RealVolume: data.RealVolume ?? prev.RealVolume,
-          Volume:     data.Volume     ?? prev.Volume,
-          date:       data.date       ?? prev.date,
-          time:       data.time       ?? prev.time,
-          imagePath:  data.imagePath  ?? prev.imagePath,
-          status:     data.status     ?? prev.status,
-        }));
-
-        setBins((prev) => [data, ...prev].slice(0, 1000));
-
-        setLastMsgAt(Date.now());
-        setFlash(true);
-        clearTimeout(flashTimerRef.current);
-        flashTimerRef.current = setTimeout(() => setFlash(false), 550);
-      } catch (err) {
-        console.error("Error parsing bin-data WS message", err);
-      }
+      ws.onerror = () => console.warn("bin-data websocket error");
+      ws.onclose = () => {
+        if (stopped) return;
+        console.warn("bin-data websocket closed; reconnecting");
+        const delay = Math.min(1000 * Math.pow(2, attempts++), 10000);
+        reconnectTimer = setTimeout(connect, delay);
+      };
     };
 
-    ws.onclose = () => {
-      console.log("❌ Bin data WebSocket disconnected");
-    };
-
+    connect();
     return () => {
-      ws.close();
+      stopped = true;
+      clearTimeout(reconnectTimer);
       clearTimeout(flashTimerRef.current);
-      console.log("🧹 Closed WebSocket for bin-data");
+      if (ws) ws.close();
     };
   }, []);
 
@@ -310,11 +334,21 @@ const Home = () => {
             LIVE CAMERA
           </div>
           <div className="camera-frame" ref={imageRef}>
-            {boxDetails.imagePath ? (
+            {typeof boxDetails.imagePath === "string" &&
+             boxDetails.imagePath.startsWith("/uploads/") ? (
               <img
-                src={`http://localhost:5001${boxDetails.imagePath}`}
+                key={boxDetails.imagePath}
+                src={`${window.location.protocol}//${window.location.hostname}:5001${boxDetails.imagePath}`}
                 alt="Live Box"
                 className="camera-img"
+                onError={(event) => {
+                  console.error("Image failed to load", event.currentTarget.src);
+                  setBoxDetails((prev) =>
+                    prev.imagePath === boxDetails.imagePath
+                      ? { ...prev, imagePath: null }
+                      : prev
+                  );
+                }}
               />
             ) : (
               <div className="camera-placeholder">
