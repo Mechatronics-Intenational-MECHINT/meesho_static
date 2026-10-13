@@ -4,6 +4,7 @@ import box from "../icons/box.png";
 import date from "../icons/date.png";
 import time from "../icons/time.png";
 import axios from "axios";
+import { API_BASE_URL, BIN_DATA_WS_URL, imageUrl } from "../config/serviceEndpoints";
 import { CircularProgressbar, buildStyles } from 'react-circular-progressbar';
 import 'react-circular-progressbar/dist/styles.css';
 import "bootstrap/dist/css/bootstrap.min.css";
@@ -57,59 +58,81 @@ const Home = () => {
   const [flash, setFlash] = useState(false);
   const flashTimerRef = useRef(null);
 
+  // Keep the websocket alive when the backend restarts or the network drops.
   useEffect(() => {
-    const ws = new WebSocket("ws://localhost:5001/bin-data");
+    let ws;
+    let reconnectTimer;
+    let stopped = false;
+    let attempts = 0;
 
-    ws.onopen = () => console.log("📦 Connected to /bin-data WS");
+    const connect = () => {
+      if (stopped) return;
+      ws = new WebSocket(BIN_DATA_WS_URL);
 
-    ws.onmessage = (evt) => {
-      try {
-        const data = JSON.parse(evt.data);
+      ws.onopen = () => {
+        attempts = 0;
+        console.log("Connected to /bin-data WS");
+      };
 
-        if (data.type === "image-update") {
-          setBoxDetails((prev) =>
-            prev.barcode === data.barcode ? { ...prev, imagePath: data.imagePath } : prev
-          );
-          setBins((prev) =>
-            prev.map((b) => (b.barcode === data.barcode ? { ...b, imagePath: data.imagePath } : b))
-          );
-          return;
+      ws.onmessage = (evt) => {
+        try {
+          const data = JSON.parse(evt.data);
+          if (data.type === "image-update") {
+            setBoxDetails((prev) =>
+              prev.barcode === data.barcode
+                ? { ...prev, imagePath: data.imagePath }
+                : prev
+            );
+            setBins((prev) => prev.map((b) =>
+              b.barcode === data.barcode ? { ...b, imagePath: data.imagePath } : b
+            ));
+            return;
+          }
+
+          setBoxDetails((prev) => {
+            const newParcel = Boolean(data.barcode && data.barcode !== prev.barcode);
+            return {
+              barcode: data.barcode ?? prev.barcode,
+              length: data.length ?? prev.length,
+              breadth: data.breadth ?? prev.breadth,
+              height: data.height ?? prev.height,
+              weight: data.weight ?? prev.weight,
+              volumetricWeight: data.volumetricWeight ?? prev.volumetricWeight,
+              RealVolume: data.RealVolume ?? prev.RealVolume,
+              Volume: data.Volume ?? prev.Volume,
+              date: data.date ?? prev.date,
+              time: data.time ?? prev.time,
+              // Never carry the previous parcel's image into a new scan.
+              imagePath: data.imagePath ?? (newParcel ? null : prev.imagePath),
+              status: data.status ?? prev.status,
+            };
+          });
+
+          setBins((prev) => [data, ...prev].slice(0, 1000));
+          setLastMsgAt(Date.now());
+          setFlash(true);
+          clearTimeout(flashTimerRef.current);
+          flashTimerRef.current = setTimeout(() => setFlash(false), 550);
+        } catch (err) {
+          console.error("Error parsing bin-data WS message", err);
         }
+      };
 
-        setBoxDetails((prev) => ({
-          barcode:    data.barcode    ?? prev.barcode,
-          length:     data.length     ?? prev.length,
-          breadth:    data.breadth    ?? prev.breadth,
-          height:     data.height     ?? prev.height,
-          weight:     data.weight     ?? prev.weight,
-          volumetricWeight: data.volumetricWeight ?? prev.volumetricWeight,
-          RealVolume: data.RealVolume ?? prev.RealVolume,
-          Volume:     data.Volume     ?? prev.Volume,
-          date:       data.date       ?? prev.date,
-          time:       data.time       ?? prev.time,
-          imagePath:  data.imagePath  ?? prev.imagePath,
-          status:     data.status     ?? prev.status,
-        }));
-
-        setBins((prev) => [data, ...prev].slice(0, 1000));
-
-        setLastMsgAt(Date.now());
-        setFlash(true);
-        clearTimeout(flashTimerRef.current);
-        flashTimerRef.current = setTimeout(() => setFlash(false), 550);
-      } catch (err) {
-        console.error("Error parsing bin-data WS message", err);
-      }
+      ws.onerror = () => console.warn("bin-data websocket error");
+      ws.onclose = () => {
+        if (stopped) return;
+        console.warn("bin-data websocket closed; reconnecting");
+        const delay = Math.min(1000 * Math.pow(2, attempts++), 10000);
+        reconnectTimer = setTimeout(connect, delay);
+      };
     };
 
-    ws.onclose = () => {
-      console.log("❌ Bin data WebSocket disconnected");
-    };
-
+    connect();
     return () => {
-      ws.close();
+      stopped = true;
+      clearTimeout(reconnectTimer);
       clearTimeout(flashTimerRef.current);
-      console.log("🧹 Closed WebSocket for bin-data");
+      if (ws) ws.close();
     };
   }, []);
 
@@ -126,7 +149,7 @@ const Home = () => {
 
   const fetchHourlyData = async () => {
     try {
-      const res = await axios.get("http://localhost:5001/api/boxdata/boxdata");
+      const res = await axios.get(`${API_BASE_URL}/api/boxdata/boxdata`);
       const data = res.data.data || [];
 
       const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
@@ -159,7 +182,7 @@ const Home = () => {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const res = await axios.get("http://localhost:5001/api/settings/settings-data");
+        const res = await axios.get(`${API_BASE_URL}/api/settings/settings-data`);
         setSettings(res.data);
       } catch (err) {
         console.error("Failed to fetch settings", err);
@@ -192,7 +215,7 @@ const Home = () => {
       const startIST = `${last7[0].dateStr} 00:00:00`;
       const endIST = `${last7[6].dateStr} 23:59:59`;
 
-      const res = await axios.get("http://localhost:5001/api/boxdata/boxdata", {
+      const res = await axios.get(`${API_BASE_URL}/api/boxdata/boxdata`, {
         params: { startDateTime: startIST, endDateTime: endIST, limit: 10000 },
       });
       const data = res.data.data || [];
@@ -310,11 +333,21 @@ const Home = () => {
             LIVE CAMERA
           </div>
           <div className="camera-frame" ref={imageRef}>
-            {boxDetails.imagePath ? (
+            {typeof boxDetails.imagePath === "string" &&
+             boxDetails.imagePath.startsWith("/uploads/") ? (
               <img
-                src={`http://localhost:5001${boxDetails.imagePath}`}
+                key={boxDetails.imagePath}
+                src={imageUrl(boxDetails.imagePath)}
                 alt="Live Box"
                 className="camera-img"
+                onError={(event) => {
+                  console.error("Image failed to load", event.currentTarget.src);
+                  setBoxDetails((prev) =>
+                    prev.imagePath === boxDetails.imagePath
+                      ? { ...prev, imagePath: null }
+                      : prev
+                  );
+                }}
               />
             ) : (
               <div className="camera-placeholder">
