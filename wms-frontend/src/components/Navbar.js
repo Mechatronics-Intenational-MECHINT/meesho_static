@@ -11,9 +11,10 @@ import {
 } from "@fortawesome/free-solid-svg-icons";
 import "../styles/Navbar.css";
 import logo from "../assets/mechint_logo.jpeg";
+import { API_BASE_URL, NODE_RED_BASE_URL, websocketUrl } from "../config/serviceEndpoints";
 
-const STATUS_API = "http://localhost:5001/api/status/status-latest";
-const WEIGHT_WS_URL = "ws://localhost:5001/live-weight";
+const STATUS_API = `${API_BASE_URL}/api/status/status-latest`;
+const WEIGHT_WS_URL = websocketUrl("/live-weight");
 const IGNORED_STATUS_KEYS = new Set(["_id", "__v", "timestamp"]);
 
 const Navbar = () => {
@@ -132,7 +133,7 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      await axios.post("http://localhost:1880/login-code", { code: true });
+      await axios.post(`${NODE_RED_BASE_URL}/login-code`, { code: true });
     } catch (e) {}
 
     localStorage.removeItem("token");
@@ -154,7 +155,7 @@ const Navbar = () => {
           </div>
 
           <div className="navbar-subtitle">
-            Smart Automation and Robotics
+            MECHINT STATIC PROFILER · v2.0 Beta
           </div>
         </div>
       </div>
@@ -174,7 +175,7 @@ const Navbar = () => {
           <span className={`health-dot ${healthDotClass}`} />
           <div className="health-info">
             <span className="health-label">SYSTEM</span>
-            <span className="health-value">Healthy</span>
+            <span className="health-value">{isHealthy === null ? "Unknown" : isHealthy ? "Healthy" : "Active Alarm"}</span>
           </div>
         </div>
 
