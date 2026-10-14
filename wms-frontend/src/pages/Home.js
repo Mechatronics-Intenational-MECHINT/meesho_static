@@ -90,7 +90,6 @@ const Home = () => {
           }
 
           setBoxDetails((prev) => {
-            const newParcel = Boolean(data.barcode && data.barcode !== prev.barcode);
             return {
               barcode: data.barcode ?? prev.barcode,
               length: data.length ?? prev.length,
@@ -102,8 +101,9 @@ const Home = () => {
               Volume: data.Volume ?? prev.Volume,
               date: data.date ?? prev.date,
               time: data.time ?? prev.time,
-              // Never carry the previous parcel's image into a new scan.
-              imagePath: data.imagePath ?? (newParcel ? null : prev.imagePath),
+              // Each parcel event is a new observation, even when a barcode repeats.
+              // Preserve images only through explicit image-update messages.
+              imagePath: data.imagePath && data.imagePath !== "image_missing" ? data.imagePath : null,
               status: data.status ?? prev.status,
             };
           });
