@@ -45,3 +45,16 @@ Release candidate: **2.0.0-beta.1**. Customer installation: Meesho. Development 
 - Existing API calls in other frontend pages and server-side CORS policy require a separate configuration audit.
 - The current frontend supports reconnect, **not** missed-event replay.
 - No machine-level verification or full build has been performed yet.
+
+## Increment 2 — 2026-10-14
+- Added explicit `MECHINT STATIC PROFILER · v2.0 Beta` in the operator navbar and refreshed browser tab title/description.
+- Updated navbar status API, live-weight websocket and Node-RED logout endpoint to use shared configuration, addressing hardcoded `localhost` on remote workstations.
+- Changed navbar health label so an active alarm displays `Active Alarm`, and unavailable status displays `Unknown`, rather than always displaying `Healthy`.
+- Reset the current parcel image on *every* new parcel event, including repeated barcodes, to avoid stale image carry-over.
+- Added frontend unit test definitions for endpoint and image URL handling. Tests still require execution in a checkout with dependencies installed.
+
+### Environment for local staging
+- `REACT_APP_API_BASE_URL`: backend origin, e.g. `http://192.168.85.3:5001`.
+- `REACT_APP_NODE_RED_BASE_URL`: Node-RED origin, e.g. `http://192.168.85.3:1880`.
+- Create React App applies `REACT_APP_*` values at **build time**, not when opening the browser.
+- Do not deploy without checking server CORS settings, Node-RED CORS policy, network/firewall, and login/logout behavior on both local and remote clients.
