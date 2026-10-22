@@ -209,9 +209,15 @@ function toOverlayTime(raw) {
   return m ? `${m[3]}-${m[2]}-${m[1]} ${m[4]}:${m[5]}:${m[6]}` : iso;
 }
 function buildOverlayLines(box, st) {
+  const l = Number(box.length) || 0;
+  const b = Number(box.breadth) || 0;
+  const h = Number(box.height) || 0;
+  const volumetricWeight = ((l * b * h) / 100).toFixed(2);
+
   return [
     `AWB: ${box.barcode}`,
     `Dimension (LxBxH): ${box.length} x ${box.breadth} x ${box.height} mm`,
+    `Volumetric Weight: ${volumetricWeight}`,
     `Weight: ${box.weight} (gm)`,
     `Real Volume: ${box.RealVolume} cm3`,
     `Volume: ${box.Volume} cm3`,
