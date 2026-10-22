@@ -5,16 +5,21 @@ const { withTokenRetry } = require("../config/tokenManager");
 const AuthToken = require("../models/AuthToken");
 const ImageRequest = require("../models/ImageRequest");
 const ApiStatus = require("../models/ApiStatus");
-const logger = require("../utils/logger");
 
-const FETCH_API_URL =
-  process.env.MEESHO_IMAGE_FETCH_URL ||
-  "https://prod-app.valmo.in/api/v1/sorter/image/get";
-const DEFAULT_DELAY_MS = 60_000;
+const FETCH_API_URL = "http://localhost:4000/api/mock-response";
+
+const DEFAULT_DELAY_MS = 60_000;      // API ne time nahi diya / error aaya
+const MIN_DELAY_MS = 5_000;           // API kabhi 0 bheje to hammering na ho
+const MAX_DELAY_MS = 24 * 60 * 60_000;
+const HAS_MORE_DELAY_MS = 2_000;      // has_more=true -> jaldi next page
 const MAX_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 5_000;
 
 let timer = null;
+let running = false;
+let stopped = false;
+
+/* ---------------- helpers ---------------- */
 
 async function recordApiStatus({ apiName, url, payload, statusCode, success, response, attempt }) {
   try {
@@ -48,63 +53,66 @@ async function saveCursor(cursor) {
   }
 }
 
+const isValidDate = (v) => typeof v === "string" && !Number.isNaN(Date.parse(v));
+
+/* ---------------- queue AWB / DBO-IBO ---------------- */
+
 async function queueResults(data) {
   const ops = [];
 
+  // 1) AWB list
   const awbList = Array.isArray(data?.awb) ? data.awb : [];
+  const seen = new Set();
   for (const awb of awbList) {
-    const cleanAwb = String(awb).trim();
-    if (!cleanAwb) continue;
+    const cleanAwb = String(awb ?? "").trim();
+    if (!cleanAwb || seen.has(cleanAwb)) continue;
+    seen.add(cleanAwb);
 
     ops.push({
       updateOne: {
         filter: { type: "AWB", awb: cleanAwb },
-        update: {
-          $setOnInsert: { type: "AWB", awb: cleanAwb, status: "pending", createdAt: new Date() },
-        },
+        update: { $setOnInsert: { status: "pending", createdAt: new Date() } },
         upsert: true,
       },
     });
   }
 
-  const dboList = data?.["dbo/ibo_ranges"] || [];
-  if (Array.isArray(dboList)) {
+  // 2) DBO/IBO ranges (sirf jab API ne needed bola ho)
+  const dboNeeded = data?.["dbo/ibo_needed"] !== false;
+  const dboList = data?.["dbo/ibo_ranges"];
+  if (dboNeeded && Array.isArray(dboList)) {
     for (const range of dboList) {
-      if (!range?.from || !range?.to) continue;
+      if (!isValidDate(range?.from) || !isValidDate(range?.to)) {
+        console.warn("⚠️ imageFetch: Invalid DBO/IBO range skipped:", JSON.stringify(range));
+        continue;
+      }
       ops.push({
         updateOne: {
           filter: { type: "DBO/IBO", dbo_ibo_from: range.from, dbo_ibo_to: range.to },
-          update: {
-            $setOnInsert: {
-              type: "DBO/IBO",
-              dbo_ibo_from: range.from,
-              dbo_ibo_to: range.to,
-              status: "pending",
-              createdAt: new Date(),
-            },
-          },
+          update: { $setOnInsert: { status: "pending", createdAt: new Date() } },
           upsert: true,
         },
       });
     }
   }
 
-  if (ops.length) {
+  if (!ops.length) {
+    console.log("ℹ️  imageFetch: No AWBs or DBO/IBO ranges requested in this cycle.");
+    return;
+  }
+
+  try {
     await ImageRequest.bulkWrite(ops, { ordered: false });
-    // console.log(`📥 imageFetch: Successfully queued ${ops.length} request(s) in ImageRequest collection`);
-  } else {
-    console.log(`ℹ️  imageFetch: No AWBs or DBO/IBO ranges requested in this cycle.`);
+    console.log(`📥 imageFetch: ${ops.length} request(s) queued (AWB: ${seen.size})`);
+  } catch (err) {
+    // duplicate key (race) ignore, baaki sab throw
+    if (err?.code !== 11000) throw err;
   }
 }
 
-async function fetchTick() {
-  const currentCursor = await getCursor();
+/* ---------------- API call with retry ---------------- */
 
-  // Exactly matches doc: only "cursor" key
-  const payload = {
-    cursor: currentCursor || "",
-  };
-
+async function callFetchApi(payload) {
   let lastErr;
 
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -114,16 +122,11 @@ async function fetchTick() {
         if (cleanToken.toLowerCase().startsWith("bearer ")) {
           cleanToken = cleanToken.slice(7).trim();
         }
-
-        const headers = {
-          "Content-Type": "application/json",
-          Authorization: cleanToken,
-        };
-
-        return axios.post(FETCH_API_URL, payload, { headers, timeout: 15_000 });
+        return axios.post(FETCH_API_URL, payload, {
+          headers: { "Content-Type": "application/json", Authorization: cleanToken },
+          timeout: 15_000,
+        });
       });
-
-      // console.log(`✅ [imageFetch] HTTP ${res.status} Response:`, JSON.stringify(res.data, null, 2));
 
       await recordApiStatus({
         apiName: "imageFetch",
@@ -135,24 +138,16 @@ async function fetchTick() {
         attempt,
       });
 
-      await queueResults(res.data);
-
-      if (res.data?.next_cursor) {
-        await saveCursor(res.data.next_cursor);
-      }
-
-      const nextIntervalSeconds = Number(res.data?.next_call_after_seconds);
-      const delayMs = nextIntervalSeconds > 0 ? nextIntervalSeconds * 1000 : DEFAULT_DELAY_MS;
-
-      // console.log(`⏱️  [imageFetch] Next call scheduled in ${delayMs / 1000} seconds.`);
-      scheduleNext(delayMs);
-      return;
+      return res.data;
     } catch (err) {
+      lastErr = err;
       const status = err.response?.status || 0;
       const respData = err.response?.data;
-      lastErr = err;
 
-      console.error(`❌ [imageFetch ERROR Attempt ${attempt}/${MAX_ATTEMPTS}] HTTP ${status}:`, JSON.stringify(respData || err.message));
+      console.error(
+        `❌ [imageFetch ERROR Attempt ${attempt}/${MAX_ATTEMPTS}] HTTP ${status}:`,
+        JSON.stringify(respData || err.message)
+      );
 
       await recordApiStatus({
         apiName: "imageFetch",
@@ -171,19 +166,58 @@ async function fetchTick() {
   }
 
   console.error(`❌ [imageFetch] All attempts exhausted: ${lastErr?.message}`);
-  scheduleNext(DEFAULT_DELAY_MS);
+  return null;
+}
+
+/* ---------------- scheduler ---------------- */
+
+function computeDelay(data) {
+  // Aur data baaki hai -> turant agla page
+  if (data?.has_more === true) return HAS_MORE_DELAY_MS;
+
+  const secs = Number(data?.next_call_after_seconds);
+  if (Number.isFinite(secs) && secs > 0) {
+    return Math.min(Math.max(secs * 1000, MIN_DELAY_MS), MAX_DELAY_MS);
+  }
+  return DEFAULT_DELAY_MS;
 }
 
 function scheduleNext(delayMs) {
+  if (stopped) return;
   if (timer) clearTimeout(timer);
-  timer = setTimeout(() => fetchTick(), delayMs);
+  console.log(`⏱️  [imageFetch] Next call in ${Math.round(delayMs / 1000)}s`);
+  timer = setTimeout(fetchTick, delayMs);
+}
+
+async function fetchTick() {
+  if (running || stopped) return;
+  running = true;
+
+  let nextDelay = DEFAULT_DELAY_MS;
+  try {
+    const cursor = await getCursor();
+    const data = await callFetchApi({ cursor: cursor || "" });
+
+    if (data) {
+      // Pehle queue, phir cursor save: queue fail hua to same cursor se dobara aayega
+      await queueResults(data);
+      await saveCursor(data.next_cursor);
+      nextDelay = computeDelay(data);
+    }
+  } catch (err) {
+    console.error("❌ [imageFetch] Tick failed:", err.message);
+  } finally {
+    running = false;
+    scheduleNext(nextDelay); // chahe kuch bhi ho, loop marna nahi chahiye
+  }
 }
 
 module.exports = fp(async function imageFetchPlugin(fastify) {
   console.log("⚙️  imageFetchService plugin registered. Triggering initial fetch in 5 seconds...");
-  setTimeout(() => fetchTick(), 5_000);
+  timer = setTimeout(fetchTick, 5_000);
 
   fastify.addHook("onClose", async () => {
+    stopped = true;
     if (timer) clearTimeout(timer);
     console.log("🛑 imageFetchService stopped");
   });

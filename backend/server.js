@@ -42,24 +42,49 @@ const { startSettingsAutoSend, stopSettingsAutoSend } = require("./services/send
 // DWS Image Folder
 const dwsImageDir = "D:\\Images";
 
-// ---------------- IMAGE MATCH HELPER (shared by inline retry + reconciliation) ----------------
+// ---------------- IMAGE MATCH HELPER (inline retry + reconciliation) ----------------
+// Only completed images should be copied to the HTTP-served uploads directory.
 async function tryMatchImage(barcode) {
   try {
     const files = await fsp.readdir(dwsImageDir);
-    const matches = files.filter((f) => f.startsWith(barcode));
-    if (!matches.length) return null;
+    const candidates = files.filter((f) =>
+      f.startsWith(String(barcode)) && /\.(jpe?g|png|bmp)$/i.test(f)
+    );
+    if (!candidates.length) return null;
 
-    matches.sort((a, b) => b.localeCompare(a));
+    const withStats = await Promise.all(candidates.map(async (name) => {
+      const source = path.join(dwsImageDir, name);
+      try {
+        const stat = await fsp.stat(source);
+        return stat.isFile() && stat.size > 0
+          ? { name, source, mtimeMs: stat.mtimeMs, size: stat.size }
+          : null;
+      } catch (_) {
+        return null; // File may have disappeared while camera rotated files.
+      }
+    }));
+    const ready = withStats.filter(Boolean).sort((a, b) => b.mtimeMs - a.mtimeMs);
+    if (!ready.length) return null;
+
+    // A file may become visible before the camera finishes writing its bytes.
+    const candidate = ready[0];
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    const latestStat = await fsp.stat(candidate.source);
+    if (!latestStat.isFile() || latestStat.size !== candidate.size ||
+        latestStat.mtimeMs !== candidate.mtimeMs) {
+      return null; // Retry on a later pass / reconciliation tick.
+    }
 
     const uploadDir = path.join(__dirname, "uploads");
     await fsp.mkdir(uploadDir, { recursive: true });
-
-    const destFile = `${barcode}-${Date.now()}.jpg`;
-    await fsp.copyFile(path.join(dwsImageDir, matches[0]), path.join(uploadDir, destFile));
-
-    return `/uploads/${destFile}`;
+    const safeBarcode = String(barcode).replace(/[^a-zA-Z0-9_-]/g, "_");
+    const ext = path.extname(candidate.name).toLowerCase();
+    const destFile = `${safeBarcode}-${Date.now()}${ext}`;
+    const destination = path.join(uploadDir, destFile);
+    await fsp.copyFile(candidate.source, destination);
+    return `/uploads/${encodeURIComponent(destFile)}`;
   } catch (err) {
-    logger.info("🖼️ Image error:", err.message);
+    logger.info("Image matching error: " + err.message);
     return null;
   }
 }
