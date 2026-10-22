@@ -21,6 +21,7 @@ const MAX_RETRIES = 5;
 const RETRY_BACKOFF_MS = 60_000;         // attempt * 60s
 const REQUESTS_PER_TICK = 20;
 const DBO_IMAGES_PER_TICK = 200;         // bada range ho to tick-by-tick chalega
+const OPEN_RANGE_RECHECK_MS = 5 * 60_000; // range ka `to` abhi future me hai -> naye boxes aa sakte hain, 5 min baad dobara dekho
 
 const PHYSICAL_SORTER_ID = process.env.SLAVE_SORTER_ID || "";
 
@@ -81,14 +82,6 @@ function resolveBoxImage(box) {
   };
 }
 
-function isWithinSizeCap(filePath) {
-  try {
-    return fs.statSync(filePath).size <= MAX_IMAGE_BYTES;
-  } catch {
-    return false;
-  }
-}
-
 // 4xx (auth/rate-limit chhodkar) = is image me hi problem hai, retry se theek nahi hogi
 function isPermanentImageError(err) {
   const s = err?.response?.status || 0;
@@ -111,8 +104,203 @@ async function failRequest(request, message) {
 
 /* ---------------- single image upload ---------------- */
 
-async function uploadOne({ type, awb, imagePath, scan_time, flow_type }) {
-  console.log(`📤 [imageUpload] Uploading -> type: ${type}, AWB: ${awb}, Path: ${imagePath}`);
+/* ===== OVERLAY START ===== */
+
+// Overlay fail hone par raw image bhej do? Default: nahi (taaki bina text wali image Valmo na chali jaye)
+const OVERLAY_FALLBACK_RAW = process.env.OVERLAY_FALLBACK_RAW === "true";
+
+// ---- TEST / PREVIEW options (sirf testing ke liye) ----
+// SAVE_STAMPED_PREVIEW=true -> overlay wali image upload se pehle ek alag folder me save hogi (upload bhi hoga)
+// UPLOAD_DRY_RUN=true       -> preview save hoga, par Valmo ko upload NAHI hoga aur request/box ka status nahi badlega
+const UPLOAD_DRY_RUN = process.env.UPLOAD_DRY_RUN === "true";
+const SAVE_PREVIEW = UPLOAD_DRY_RUN || process.env.SAVE_STAMPED_PREVIEW === "true";
+const DRY_RUN_RECHECK_MS = 60 * 60_000;   // dry run me wahi requests baar-baar na chalein
+const DRY_RUN_MAX_DBO_IMAGES = 10;        // dry run me ek DBO/IBO range ki sirf itni images
+// Default: uploads folder ke barabar me (uploads ke saath), naam "uploads_stamped_test"
+const PREVIEW_DIR =
+  process.env.STAMPED_PREVIEW_DIR ||
+  path.join(process.env.IMAGE_BASE_DIR || process.cwd(), "uploads_stamped_test");
+
+async function savePreview(filename, buffer) {
+  try {
+    await fs.promises.mkdir(PREVIEW_DIR, { recursive: true });
+    const target = path.join(PREVIEW_DIR, filename);
+    await fs.promises.writeFile(target, buffer);
+    console.log(`🖼️  [imageUpload] Preview saved: ${target}`);
+  } catch (e) {
+    console.warn(`⚠️  [imageUpload] Preview save failed: ${e.message}`); // upload ko rokna nahi hai
+  }
+}
+
+const LOCAL_BACKUP_DIR = "D:\\meesho_static2.0\\Uploaded";
+async function saveLocalCopy(filename, buffer) {
+  try {
+    await fs.promises.mkdir(LOCAL_BACKUP_DIR, { recursive: true });
+    await fs.promises.writeFile(path.join(LOCAL_BACKUP_DIR, filename), buffer);
+    console.log(`💾 [imageUpload] Copied to local backup: ${path.join(LOCAL_BACKUP_DIR, filename)}`);
+  } catch (e) {
+    console.warn(`⚠️  [imageUpload] Local backup save failed: ${e.message}`);
+  }
+}
+
+// canvas library: @napi-rs/canvas ya node-canvas (jo bhi installed ho)
+let _canvasLib = null;
+let _isNapi = false;
+function getCanvasLib() {
+  if (_canvasLib) return _canvasLib;
+  try {
+    _canvasLib = require("@napi-rs/canvas");
+    _isNapi = true;
+  } catch {
+    try {
+      _canvasLib = require("canvas");
+      _isNapi = false;
+    } catch {
+      const e = new Error("canvas library not installed (npm i @napi-rs/canvas)");
+      e.permanent = false;
+      throw e;
+    }
+  }
+  return _canvasLib;
+}
+
+function encodeJpeg(canvas, quality) {
+  // @napi-rs/canvas: quality 0-100 | node-canvas: { quality: 0-1 }
+  return _isNapi
+    ? canvas.toBuffer("image/jpeg", Math.round(quality * 100))
+    : canvas.toBuffer("image/jpeg", { quality });
+}
+
+// Profiler ID / Center / State: Settings model se (60 sec cache), warna env se
+let _settingsCache = { at: 0, value: null };
+async function getOverlaySettings() {
+  if (_settingsCache.value && Date.now() - _settingsCache.at < 60_000) return _settingsCache.value;
+
+  let doc = null;
+  try {
+    // NOTE: apne project me jo Settings model hai uska sahi path yahan rakhiye
+    const Settings = require("../models/Settings");
+    doc = await Settings.findOne({}).lean();
+  } catch (e) {
+    console.warn("⚠️  [imageUpload] Settings model read failed, env fallback used:", e.message);
+  }
+
+  const value = {
+    machineUsername: doc?.machineUsername || process.env.PROFILER_ID || "",
+    centerName: doc?.centerName || process.env.CENTER_NAME || "",
+    state: doc?.state || process.env.CENTER_STATE || "",
+  };
+  _settingsCache = { at: Date.now(), value };
+  return value;
+}
+
+// "2026-10-15T17:04:04+05:30" format (IST)
+function toIstIso(raw) {
+  if (typeof raw === "string" && /\+05:30$/.test(raw)) return raw;
+  const d = raw ? new Date(raw) : new Date();
+  const valid = Number.isNaN(d.getTime()) ? new Date() : d;
+  return new Date(valid.getTime() + 5.5 * 60 * 60 * 1000)
+    .toISOString()
+    .replace(/\.\d{3}Z$/, "+05:30");
+}
+function toOverlayTime(raw) {
+  const iso = toIstIso(raw);
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+  return m ? `${m[3]}-${m[2]}-${m[1]} ${m[4]}:${m[5]}:${m[6]}` : iso;
+}
+function buildOverlayLines(box, st) {
+  return [
+    `AWB: ${box.barcode}`,
+    `Dimension (LxBxH): ${box.length} x ${box.breadth} x ${box.height} mm`,
+    `Weight: ${box.weight} (gm)`,
+    `Real Volume: ${box.RealVolume} cm3`,
+    `Volume: ${box.Volume} cm3`,
+    `timestamp: ${toOverlayTime(box.dwstime || box.time || box.date)}`,
+    `ProfilerID: SC_D17S_MECHINT_SLAVE_PROFILER_2026_001_001`,
+    `Location: ${st.centerName}`,
+  ];
+}
+
+// Raw image buffer -> text overlay wali JPEG buffer (<= MAX_IMAGE_BYTES ki koshish)
+async function stampImage(raw, box) {
+  const lib = getCanvasLib();
+
+  let image;
+  try {
+    image = await lib.loadImage(raw);
+  } catch (e) {
+    const err = new Error(`cannot decode image: ${e.message}`);
+    err.permanent = true; // kharab image, retry se theek nahi hogi
+    throw err;
+  }
+
+  const lines = buildOverlayLines(box, await getOverlaySettings());
+  let last = null;
+
+  // Pehle quality kam karo, phir size 85% / 70% / 55% karo, jab tak 1MB ke andar na aaye
+  for (const scale of [1, 0.85, 0.7, 0.55]) {
+    const w = Math.round(image.width * scale);
+    const h = Math.round(image.height * scale);
+    const canvas = lib.createCanvas(w, h);
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(image, 0, 0, w, h);
+
+    // Text size image ki width ke hisaab se
+    const fontPx = Math.max(14, Math.round(w / 90));
+    const lineH = Math.round(fontPx * 1.4);
+    const pad = Math.round(fontPx * 0.6);
+    const bannerH = lines.length * lineH + pad * 2;
+
+    ctx.fillStyle = "rgba(0,0,0,0.55)";
+    ctx.fillRect(0, 0, w, bannerH);
+
+    ctx.fillStyle = "#00FF00";
+    ctx.font = `bold ${fontPx}px Consolas, "Courier New", monospace`;
+    ctx.textBaseline = "top";
+    lines.forEach((t, i) => ctx.fillText(t, pad, pad + i * lineH));
+
+    for (const q of [0.9, 0.8, 0.7, 0.6]) {
+      last = encodeJpeg(canvas, q);
+      if (last.length <= MAX_IMAGE_BYTES) return last;
+    }
+  }
+  return last;
+}
+
+// img.buffer / img.filename set karta hai. Return: { ok } ya { ok:false, reason, permanent }
+async function prepareImage(box, img) {
+  try {
+    const raw = await fs.promises.readFile(img.path);
+    let buffer;
+    try {
+      buffer = await stampImage(raw, box);
+    } catch (e) {
+      if (OVERLAY_FALLBACK_RAW && !e.permanent) {
+        console.warn(`⚠️  [imageUpload] Overlay failed, raw image will be uploaded: ${e.message}`);
+        buffer = raw;
+      } else {
+        return { ok: false, permanent: e.permanent === true, reason: `overlay failed: ${e.message}` };
+      }
+    }
+
+    if (buffer.length > MAX_IMAGE_BYTES) {
+      return { ok: false, permanent: true, reason: `image exceeds 1MB even after compression (${buffer.length} bytes)` };
+    }
+
+    img.buffer = buffer;
+    img.filename = path.basename(img.path);
+    await saveLocalCopy(img.filename, buffer);
+    if (SAVE_PREVIEW) await savePreview(img.filename, buffer);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, permanent: false, reason: `image prepare error: ${e.message}` };
+  }
+}
+
+/* ===== OVERLAY END ===== */
+
+async function uploadOne({ type, awb, buffer, filename, scan_time, flow_type }) {
+  console.log(`📤 [imageUpload] Uploading -> type: ${type}, AWB: ${awb}, File: ${filename}, ${buffer.length} bytes`);
 
   const res = await withTokenRetry(async (token) => {
     let cleanToken = String(token || "").trim();
@@ -120,34 +308,29 @@ async function uploadOne({ type, awb, imagePath, scan_time, flow_type }) {
       cleanToken = cleanToken.slice(7).trim();
     }
 
-    // Form + stream har attempt me naya (token retry par purana stream consume ho chuka hota hai)
+    // Har attempt me naya form (buffer reuse safe hai)
     const form = new FormData();
     form.append("type", type);
     form.append("awb", awb);
     form.append("flow_type", flow_type || "FWD");
     form.append("scan_time", scan_time);
     form.append("physical_sorter_id", PHYSICAL_SORTER_ID);
-    const stream = fs.createReadStream(imagePath);
-    form.append("image", stream);
+    form.append("image", buffer, { filename, contentType: "image/jpeg" });
 
     const length = await new Promise((resolve, reject) =>
       form.getLength((e, l) => (e ? reject(e) : resolve(l)))
     );
 
-    try {
-      return await axios.post(UPLOAD_API_URL, form, {
-        headers: {
-          ...form.getHeaders(),
-          "Content-Length": length,
-          Authorization: cleanToken,
-        },
-        timeout: PER_IMAGE_TIMEOUT_MS,
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity,
-      });
-    } finally {
-      stream.destroy();
-    }
+    return axios.post(UPLOAD_API_URL, form, {
+      headers: {
+        ...form.getHeaders(),
+        "Content-Length": length,
+        Authorization: cleanToken,
+      },
+      timeout: PER_IMAGE_TIMEOUT_MS,
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    });
   });
 
   // HTTP 200 par bhi {"success": false} aa sakta hai
@@ -185,7 +368,8 @@ async function uploadAndLog(request, img) {
     const res = await uploadOne({
       type: request.type,
       awb: img.awb,
-      imagePath: img.path,
+      buffer: img.buffer,
+      filename: img.filename,
       scan_time: img.scan_time,
       flow_type: img.flow_type,
     });
@@ -237,11 +421,24 @@ async function processAwb(request) {
       return;
     }
 
-    if (!isWithinSizeCap(img.path)) {
-      console.warn(`⚠️  [imageUpload] Image exceeds 1MB: ${img.path}`);
-      await updateRequest(request, { $set: { status: "no_match", lastError: "image exceeds 1MB limit" } });
-      boxPatch = { $set: { imageProcessing: false, imageLastError: "image exceeds 1MB" } };
+    // Overlay text lagao + 1MB check
+    const prep = await prepareImage(locked, img);
+    if (!prep.ok) {
+      console.warn(`⚠️  [imageUpload] AWB ${request.awb}: ${prep.reason}`);
+      if (prep.permanent) {
+        await updateRequest(request, { $set: { status: "no_match", lastError: prep.reason } });
+        boxPatch = { $set: { imageProcessing: false, imageLastError: prep.reason } };
+      } else {
+        await failRequest(request, prep.reason);
+        boxPatch = { $set: { imageProcessing: false, imageLastError: prep.reason }, $inc: { imageRetryCount: 1 } };
+      }
       return;
+    }
+
+    if (UPLOAD_DRY_RUN) {
+      console.log(`🧪 [imageUpload] DRY RUN: AWB ${request.awb} preview saved, upload skipped`);
+      await updateRequest(request, { $set: { nextAttemptAt: new Date(Date.now() + DRY_RUN_RECHECK_MS) } });
+      return; // finally block lock release karega
     }
 
     const result = await uploadAndLog(request, img);
@@ -283,9 +480,10 @@ async function processDboIbo(request) {
 
   const alreadyDone = [...(request.matchedImagePaths || []), ...(request.skippedImagePaths || [])];
 
-  // Range ke andar jinki image abhi tak upload/skip nahi hui
+  // Range ke andar sirf REJECTED boxes, jinki image abhi tak upload/skip nahi hui
   const boxes = await Boxdata.find({
     date: { $gte: from, $lte: to }, // `date` = ISODate (UTC), range bhi UTC "Z" me aati hai
+    status: { $regex: /^rejected$/i }, // sirf rejected (case-insensitive)
     imagePath: { $nin: [null, "", "image_missing", ...alreadyDone] },
   })
     .sort({ date: 1 })
@@ -295,27 +493,53 @@ async function processDboIbo(request) {
   const batch = hasMore ? boxes.slice(0, DBO_IMAGES_PER_TICK) : boxes;
 
   if (!batch.length) {
+    // Range abhi chal rahi hai (to > now): abhi "done" mat karo, naye scan hue boxes bhi upload hone chahiye
+    if (to.getTime() > Date.now()) {
+      await updateRequest(request, {
+        $set: { status: "pending", lastError: "", nextAttemptAt: new Date(Date.now() + OPEN_RANGE_RECHECK_MS) },
+      });
+      return;
+    }
     const uploadedBefore = (request.matchedImagePaths || []).length > 0;
     await updateRequest(request, {
       $set: {
         status: uploadedBefore ? "uploaded" : "no_match",
-        lastError: uploadedBefore ? "" : "no Boxdata images found in this range",
+        lastError: uploadedBefore ? "" : "no rejected Boxdata images found in this range",
       },
     });
     return;
   }
 
-  console.log(`📦 [imageUpload] DBO/IBO ${request.dbo_ibo_from} -> ${request.dbo_ibo_to}: ${batch.length} image(s) this tick`);
+  console.log(`📦 [imageUpload] DBO/IBO ${request.dbo_ibo_from} -> ${request.dbo_ibo_to}: ${batch.length} rejected image(s) this tick`);
 
+  let dryCount = 0;
   for (const box of batch) {
     if (stopped) return;
 
     const { img, reason } = resolveBoxImage(box);
     if (!img) console.warn(`⚠️  [imageUpload] DBO/IBO ${box.barcode}: ${reason}`);
 
-    // File nahi hai / 1MB se badi -> skip list me daalo taaki baar-baar na aaye
-    if (!img || !isWithinSizeCap(img.path)) {
+    // File nahi hai -> skip list me daalo taaki baar-baar na aaye
+    if (!img) {
       await updateRequest(request, { $addToSet: { skippedImagePaths: box.imagePath } });
+      continue;
+    }
+
+    // Overlay text lagao + 1MB check
+    const prep = await prepareImage(box, img);
+    if (!prep.ok) {
+      console.warn(`⚠️  [imageUpload] DBO/IBO ${box.barcode}: ${prep.reason}`);
+      if (prep.permanent) {
+        await updateRequest(request, { $addToSet: { skippedImagePaths: img.storedPath } });
+        continue;
+      }
+      await failRequest(request, prep.reason); // config problem (jaise canvas missing) -> ruk jao
+      return;
+    }
+
+    if (UPLOAD_DRY_RUN) {
+      dryCount += 1;
+      if (dryCount >= DRY_RUN_MAX_DBO_IMAGES) break;
       continue;
     }
 
@@ -336,9 +560,22 @@ async function processDboIbo(request) {
   }
 
   // hasMore => agle tick me bacha hua range, attempts waste nahi honge
-  await updateRequest(request, {
-    $set: { status: hasMore ? "pending" : "uploaded", lastError: "" },
-  });
+  if (UPLOAD_DRY_RUN) {
+    console.log(`🧪 [imageUpload] DRY RUN: DBO/IBO ${request.dbo_ibo_from} -> ${request.dbo_ibo_to}: ${dryCount} preview(s), upload skipped`);
+    await updateRequest(request, { $set: { nextAttemptAt: new Date(Date.now() + DRY_RUN_RECHECK_MS) } });
+    return;
+  }
+
+  if (hasMore) {
+    await updateRequest(request, { $set: { status: "pending", lastError: "" } });
+  } else if (to.getTime() > Date.now()) {
+    // range abhi khuli hai -> thodi der baad dobara check
+    await updateRequest(request, {
+      $set: { status: "pending", lastError: "", nextAttemptAt: new Date(Date.now() + OPEN_RANGE_RECHECK_MS) },
+    });
+  } else {
+    await updateRequest(request, { $set: { status: "uploaded", lastError: "" } });
+  }
 }
 
 /* ---------------- scheduler ---------------- */
@@ -379,6 +616,7 @@ async function uploadTick() {
     running = false;
     scheduleNext(TICK_INTERVAL_MS);
   }
+
 }
 
 function scheduleNext(ms) {

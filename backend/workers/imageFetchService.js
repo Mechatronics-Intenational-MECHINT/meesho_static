@@ -6,7 +6,9 @@ const AuthToken = require("../models/AuthToken");
 const ImageRequest = require("../models/ImageRequest");
 const ApiStatus = require("../models/ApiStatus");
 
-const FETCH_API_URL = "http://localhost:4000/api/mock-response";
+const FETCH_API_URL =
+  process.env.MEESHO_IMAGE_FETCH_URL ||
+  "https://prod-app.valmo.in/api/v1/sorter/image/get";
 
 const DEFAULT_DELAY_MS = 60_000;      // API ne time nahi diya / error aaya
 const MIN_DELAY_MS = 5_000;           // API kabhi 0 bheje to hammering na ho
